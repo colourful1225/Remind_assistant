@@ -1,0 +1,880 @@
+下面是 **Milestone 3 完整任务包**。
+这一轮的目标是把“**提醒真的能被创建，并且到时间真的会提醒**”这条链路打通。
+
+你可以把它保存为：
+
+**`Milestone_3_AI_Task_Pack.md`**
+
+---
+
+# Milestone 3 - AI Development Task Pack
+
+## 1. 本轮目标
+
+本轮聚焦 **提醒创建、提醒时间设置、本地通知调度、首页状态更新**。
+
+在 Milestone 2 的基础上，本轮要实现：
+
+**导入文本或手动输入 -> 编辑提醒 -> 选择提醒时间 -> 保存 -> 注册本地提醒 -> 到时间收到通知 -> 首页展示提醒状态**
+
+### 本轮必须完成
+
+1. `ReminderEditorScreen` 支持设置提醒时间
+2. 用户保存提醒后，数据写入 Room
+3. 保存后自动注册本地提醒调度
+4. 到达提醒时间时，系统发送通知
+5. 首页展示：
+
+   * 标题
+   * 备注摘要
+   * 提醒时间
+   * 状态
+6. 支持删除提醒
+7. 支持标记完成
+8. 支持更新已有提醒的状态
+9. 通知点击后可回到 app 首页或提醒详情入口
+10. 开机后可恢复未过期提醒（基础版）
+
+---
+
+# 2. 本轮明确不做
+
+1. 不做重复提醒规则
+2. 不做复杂贪睡（snooze）逻辑
+3. 不做前台服务常驻
+4. 不做精确到秒的闹钟体验优化
+5. 不做云同步
+6. 不做日历事件真正创建
+7. 不做通知中的复杂 action（如稍后提醒 10 分钟）
+8. 不做 rich notification
+9. 不做多端同步状态
+10. 不做复杂筛选、搜索、分组
+
+---
+
+# 3. 本轮验收标准
+
+## 3.1 保存验收
+
+* 用户可在 ReminderEditor 页面填写标题、备注、提醒时间
+* 点击保存后数据持久化到 Room
+* 返回首页能看到新提醒
+
+## 3.2 调度验收
+
+* 保存带提醒时间的提醒后，系统成功注册调度
+* 到达时间后收到本地通知
+
+## 3.3 通知验收
+
+通知至少包含：
+
+* 标题
+* 内容摘要
+* 点击可打开 app
+
+## 3.4 首页验收
+
+首页列表中每条提醒至少展示：
+
+* 标题
+* 备注摘要
+* 提醒时间（格式化）
+* 状态（ACTIVE / COMPLETED / CANCELLED）
+
+并支持：
+
+* 标记完成
+* 删除
+
+## 3.5 状态验收
+
+* 标记完成后，状态正确更新
+* 删除后，从数据库消失
+* 已完成项不应继续触发未来提醒
+
+## 3.6 恢复验收
+
+* 重启设备后，未过期提醒能够重新注册（基础版即可）
+
+---
+
+# 4. 本轮范围说明
+
+## 4.1 本轮核心是“提醒闭环”
+
+Milestone 2 解决的是“导入”。
+Milestone 3 解决的是“真正提醒”。
+
+## 4.2 优先保证闭环可用
+
+比起花精力做复杂时间选择器，本轮更重要的是：
+
+* 数据正确
+* 调度正确
+* 通知正确
+* 状态正确
+
+---
+
+# 5. 技术要求
+
+继续沿用：
+
+* Kotlin
+* Jetpack Compose
+* MVVM
+* Hilt
+* Room
+* Navigation Compose
+* Coroutines
+* Material 3
+
+本轮新增重点能力：
+
+* AlarmManager 或 WorkManager 调度
+* BroadcastReceiver
+* NotificationChannel
+* NotificationManager
+* BootReceiver（可选但推荐基础实现）
+
+---
+
+# 6. AI 实现规则
+
+## 6.1 输出顺序
+
+AI 输出必须严格按以下顺序：
+
+1. 任务理解
+2. 设计说明
+3. 新增 / 修改文件树
+4. 完整代码
+5. Gradle 更新
+6. Manifest 更新
+7. 如何测试
+8. 当前限制
+9. 下一步建议
+
+## 6.2 必须遵守
+
+* 不要把提醒调度直接写进 Composable
+* 不要让 ViewModel 直接操作 AlarmManager 原始细节
+* 所有通知逻辑要封装
+* 所有状态更新必须经过 Repository / UseCase
+* 不要伪造通知触发
+* 不要只在内存里保存 reminderTime
+* 到时间的通知必须来自系统调度，而不是前台页面定时器
+
+---
+
+# 7. 工程目录要求
+
+在 Milestone 2 基础上，至少新增/完善以下结构：
+
+```text id="3qvsst"
+app/
+  src/main/java/com/example/reminderassistant/
+    domain/
+      model/
+        ReminderStatus.kt
+      usecase/
+        ScheduleReminderUseCase.kt
+        DeleteReminderUseCase.kt
+        CompleteReminderUseCase.kt
+        RestoreScheduledRemindersUseCase.kt
+        UpdateReminderUseCase.kt
+
+    system/
+      notification/
+        ReminderScheduler.kt
+        ReminderSchedulerImpl.kt
+        ReminderNotificationReceiver.kt
+        NotificationHelper.kt
+        ReminderIntentFactory.kt
+      boot/
+        BootCompletedReceiver.kt
+
+    data/
+      repository/
+        ReminderRepositoryImpl.kt
+      local/
+        ReminderDao.kt
+        entity/
+          ReminderEntity.kt
+
+    ui/
+      home/
+        HomeScreen.kt
+        HomeViewModel.kt
+        HomeUiState.kt
+      reminder/
+        ReminderEditorScreen.kt
+        ReminderEditorViewModel.kt
+        ReminderEditorUiState.kt
+        ReminderTimePickerField.kt
+
+    util/
+      DateTimeFormatter.kt
+```
+
+如果 AI 认为需要增加：
+
+* `AlarmPermissionHelper`
+* `NotificationPermissionHelper`
+* `UiEvent`
+* `ReceiverConstants`
+
+可以增加，但必须说明原因。
+
+---
+
+# 8. 数据模型与数据库要求
+
+## 8.1 新增 ReminderStatus
+
+必须定义：
+
+* `ACTIVE`
+* `COMPLETED`
+* `CANCELLED`
+
+---
+
+## 8.2 ReminderItem 扩展字段
+
+Milestone 3 后，`ReminderItem` 至少应包含：
+
+* `id: Long`
+* `title: String`
+* `note: String`
+* `reminderTime: Long?`
+* `createdAt: Long`
+* `updatedAt: Long`
+* `rawText: String`
+* `sourceAppName: String?`
+* `status: ReminderStatus`
+
+可选增加：
+
+* `isScheduled: Boolean`
+* `lastTriggeredAt: Long?`
+
+---
+
+## 8.3 ReminderEntity 扩展字段
+
+必须同步支持：
+
+* `status`
+* `reminderTime`
+
+如果前面已有部分字段，本轮需补齐并做 mapper 更新。
+
+---
+
+## 8.4 ReminderDao 新增接口
+
+至少新增：
+
+* `updateReminder(entity: ReminderEntity)`
+* `deleteReminder(entity: ReminderEntity)`
+* `getReminderById(id: Long): ReminderEntity?`
+* `getActiveRemindersWithTime(now: Long): List<ReminderEntity>`
+
+如 AI 觉得更适合，也可以设计为：
+
+* `getAllActiveScheduledReminders(): List<ReminderEntity>`
+
+但必须支持开机恢复。
+
+---
+
+# 9. Repository 要求
+
+## 9.1 ReminderRepository 接口至少应支持：
+
+* `getAllReminders(): Flow<List<ReminderItem>>`
+* `getReminderById(id: Long): ReminderItem?`
+* `createReminder(item: ReminderItem): Long`
+* `updateReminder(item: ReminderItem)`
+* `deleteReminder(item: ReminderItem)`
+* `completeReminder(id: Long)`
+* `getRestorableActiveReminders(now: Long): List<ReminderItem>`
+
+---
+
+## 9.2 ReminderRepositoryImpl 要求
+
+* 通过 DAO 完成持久化
+* 做 entity / domain model 转换
+* `completeReminder` 应更新状态为 `COMPLETED`
+* 删除或完成时应与调度逻辑协同工作（可在 UseCase 层协调）
+
+---
+
+# 10. UseCase 要求
+
+## 10.1 ScheduleReminderUseCase
+
+### 职责
+
+根据 reminder 数据注册系统调度。
+
+### 输入
+
+* `ReminderItem`
+
+### 行为
+
+* 若 `reminderTime == null`，不调度
+* 若状态不是 `ACTIVE`，不调度
+* 若 reminderTime 已过期，可不注册或给出保守处理
+
+---
+
+## 10.2 DeleteReminderUseCase
+
+### 职责
+
+删除提醒，并取消调度。
+
+---
+
+## 10.3 CompleteReminderUseCase
+
+### 职责
+
+将提醒标记为完成，并取消未来调度。
+
+---
+
+## 10.4 UpdateReminderUseCase
+
+### 职责
+
+更新提醒，并在 reminderTime 变更时重新调度。
+
+---
+
+## 10.5 RestoreScheduledRemindersUseCase
+
+### 职责
+
+在开机后重新注册所有仍有效的未完成提醒。
+
+---
+
+# 11. 调度实现要求
+
+## 11.1 推荐方案
+
+优先使用：
+
+**AlarmManager + BroadcastReceiver**
+
+理由：
+
+* 适合“某个具体时间点提醒”
+* 结构直观
+* 符合本项目需求
+
+AI 也可以评估 WorkManager，但若只是定时提醒，AlarmManager 更贴近需求。若采用别的方案，必须说明理由。
+
+---
+
+## 11.2 ReminderScheduler 接口
+
+建议定义接口：
+
+* `schedule(reminder: ReminderItem)`
+* `cancel(reminderId: Long)`
+* `reschedule(reminder: ReminderItem)`
+
+---
+
+## 11.3 ReminderSchedulerImpl
+
+要求：
+
+* 封装 AlarmManager
+* 使用 reminderId 作为 requestCode 的一部分
+* 构建 PendingIntent 传给 BroadcastReceiver
+* 尽量避免重复注册冲突
+
+---
+
+## 11.4 调度规则
+
+* 只有 `ACTIVE` 且 `reminderTime != null` 的 reminder 才注册
+* 过期 reminder 默认不调度
+* 更新 reminderTime 时需先取消旧调度，再注册新调度
+* 删除或完成时取消调度
+
+---
+
+# 12. Notification 要求
+
+## 12.1 NotificationHelper
+
+必须负责：
+
+* 创建通知渠道
+* 构建通知
+* 发送通知
+
+---
+
+## 12.2 通知渠道
+
+至少创建一个渠道，例如：
+
+* channelId: `reminder_channel`
+* name: `Reminder Notifications`
+
+---
+
+## 12.3 通知内容
+
+至少包括：
+
+* 标题：reminder.title
+* 内容：reminder.note 的摘要，若为空则显示默认文案
+* 小图标
+* 点击动作：打开 app
+
+---
+
+## 12.4 NotificationReceiver
+
+`ReminderNotificationReceiver` 必须：
+
+1. 接收 alarm
+2. 读取 reminderId
+3. 查询 reminder 数据（推荐）
+4. 校验 reminder 仍存在且为 ACTIVE
+5. 发送通知
+
+注意：
+
+* 不要完全依赖 PendingIntent 附带的旧文本副本，最好按 ID 回查数据库
+
+---
+
+# 13. 开机恢复要求
+
+## 13.1 BootCompletedReceiver
+
+应监听：
+
+* `BOOT_COMPLETED`
+
+### 行为
+
+1. 设备开机后收到广播
+2. 调用 `RestoreScheduledRemindersUseCase`
+3. 重新注册所有未过期、ACTIVE 的 reminder
+
+---
+
+## 13.2 Manifest 要求
+
+需要正确声明：
+
+* receiver
+* `RECEIVE_BOOT_COMPLETED` 权限
+
+Android 版本差异需要明确说明。
+
+---
+
+# 14. ReminderEditor 页面要求
+
+## 14.1 新增字段
+
+必须支持：
+
+* 标题
+* 备注
+* 提醒时间
+
+## 14.2 提醒时间输入方式
+
+本轮可采用基础版实现，接受以下任一方案：
+
+### 方案 A：日期 + 时间选择器
+
+最佳。
+
+### 方案 B：简化为按钮选择未来时间
+
+例如：
+
+* 10 分钟后
+* 1 小时后
+* 今天 20:00
+* 明天 09:00
+
+### 方案 C：文本/占位 + 简化 picker
+
+也可接受，只要用户能真实设置时间。
+
+建议优先：
+**A 或 B**
+
+---
+
+## 14.3 保存逻辑
+
+点击保存后应：
+
+1. 生成或更新 ReminderItem
+2. 持久化
+3. 注册调度
+4. 返回首页或给出成功反馈
+
+---
+
+## 14.4 ViewModel 要求
+
+`ReminderEditorViewModel` 必须：
+
+* 管理表单状态
+* 管理时间选择结果
+* 调用保存用例
+* 通过 UI Event 通知页面保存成功
+
+---
+
+## 14.5 ReminderEditorUiState 至少包含
+
+* `title`
+* `note`
+* `reminderTime`
+* `formattedReminderTime`
+* `isSaving`
+* `errorMessage`
+
+---
+
+# 15. 首页要求
+
+## 15.1 HomeScreen 展示升级
+
+首页列表中每个提醒项至少展示：
+
+* 标题
+* 备注摘要
+* 提醒时间格式化文本
+* 状态标签
+
+## 15.2 支持交互
+
+每个列表项应至少支持：
+
+* 标记完成
+* 删除
+
+可用：
+
+* 按钮
+* icon button
+* dropdown menu
+
+但必须可用，不只是 UI 摆设。
+
+---
+
+## 15.3 HomeViewModel 要求
+
+必须支持：
+
+* 订阅提醒列表
+* 删除提醒
+* 标记完成
+
+如有必要，可增加：
+
+* `HomeUiEvent`
+
+---
+
+# 16. 时间格式化要求
+
+新增一个时间格式化工具，例如：
+
+* `formatReminderTime(timestamp: Long?): String`
+
+要求：
+
+* 空值显示“未设置提醒”
+* 合理显示日期时间
+* 可使用系统 locale
+* 保持可读性
+
+---
+
+# 17. Manifest 要求
+
+Milestone 3 需要补充：
+
+## 17.1 权限
+
+* `POST_NOTIFICATIONS`（Android 13+）
+* `RECEIVE_BOOT_COMPLETED`
+
+## 17.2 Receiver
+
+* `ReminderNotificationReceiver`
+* `BootCompletedReceiver`
+
+## 17.3 exported 规则
+
+必须正确处理 Android 12+ 对 receiver 的 `exported` 要求。
+
+---
+
+# 18. Gradle 要求
+
+本轮通常不需要重型新依赖。
+如需加入：
+
+* 日期时间工具库
+* Material DatePicker 相关支持
+
+可以加，但必须说明。
+
+原则：
+
+* 尽量用标准 Android / Kotlin 能力完成
+
+---
+
+# 19. 如何测试
+
+AI 必须给出手工测试说明，至少包括：
+
+## 19.1 测试 1：手动创建提醒
+
+1. 打开 ReminderEditor
+2. 输入标题和备注
+3. 设置一个 2~5 分钟后的提醒时间
+4. 保存
+5. 回到首页确认已显示
+6. 到时间后确认收到通知
+
+## 19.2 测试 2：导入后创建提醒
+
+1. 从浏览器分享文本到 app
+2. 进入 ImportConfirm
+3. 作为提醒继续
+4. 确认标题和备注预填
+5. 设置提醒时间并保存
+6. 到时间收到通知
+
+## 19.3 测试 3：标记完成
+
+1. 创建一条带未来提醒时间的 reminder
+2. 首页点击“完成”
+3. 确认状态变更
+4. 到原时间点不再提醒
+
+## 19.4 测试 4：删除
+
+1. 创建一条带提醒的 reminder
+2. 首页删除
+3. 确认从列表移除
+4. 到原时间点不再提醒
+
+## 19.5 测试 5：重启恢复
+
+1. 创建一条未来提醒
+2. 重启设备/模拟器
+3. 确认 reminder 仍能按时触发
+
+---
+
+# 20. 当前阶段限制说明
+
+AI 必须主动说明以下限制：
+
+1. 本轮只支持单次提醒，不支持重复规则
+2. Android 不同厂商系统可能会限制后台提醒准确性
+3. Android 13+ 通知权限若未授予，提醒不会显示通知
+4. 精确闹钟能力在不同系统版本上限制不同
+5. 开机恢复是基础版，不保证覆盖所有极端场景
+6. 暂未提供通知中的“稍后提醒”按钮
+7. 暂未提供 reminder 详情页
+
+---
+
+# 21. 下一步建议
+
+Milestone 3 完成后，应进入 **Milestone 4：日历集成**。
+
+下一步目标：
+
+1. CalendarEditor 支持真实编辑
+2. 构建 CalendarDraft
+3. 调起系统日历新增事件页
+4. 自动带入标题、开始时间、结束时间、地点、描述
+5. 处理无系统日历可用时的降级策略
+
+---
+
+# 22. 可直接投喂 AI 的执行 Prompt
+
+下面这段你可以直接复制给 AI：
+
+```text id="ndmqe2"
+You are implementing Milestone 3 for an Android app called Global Reminder Assistant.
+
+Goal:
+Implement reminder creation, scheduling, local notifications, and home list state updates.
+
+Tech stack requirements:
+- Kotlin
+- Jetpack Compose
+- MVVM
+- Hilt
+- Room
+- Navigation Compose
+- Coroutines
+- Material 3
+
+Milestone 2 already exists with:
+- app skeleton
+- navigation
+- Room database
+- import flow
+- parser
+- import confirmation screen
+- reminder editor prefill
+- calendar editor placeholder
+
+What must be built in this milestone:
+1. ReminderEditorScreen must allow setting reminder time
+2. Saving a reminder must persist it to Room
+3. Saving a reminder with a future time must schedule a local reminder
+4. At trigger time, a local notification must be shown
+5. HomeScreen must show:
+   - title
+   - note summary
+   - formatted reminder time
+   - status
+6. HomeScreen must support:
+   - delete reminder
+   - mark reminder completed
+7. Completing or deleting a reminder must cancel future schedule
+8. Add ReminderScheduler abstraction and implementation
+9. Add ReminderNotificationReceiver
+10. Add NotificationHelper
+11. Add BootCompletedReceiver for basic restore
+12. Add use cases:
+   - ScheduleReminderUseCase
+   - DeleteReminderUseCase
+   - CompleteReminderUseCase
+   - UpdateReminderUseCase
+   - RestoreScheduledRemindersUseCase
+
+Constraints:
+- Do NOT implement recurring reminders yet
+- Do NOT implement rich notification actions yet
+- Do NOT implement cloud sync
+- Do NOT implement calendar integration yet
+- Keep scheduling logic outside UI
+- Keep notification logic encapsulated
+- Validate reminder state before showing notifications
+- Prefer AlarmManager + BroadcastReceiver unless you clearly justify another approach
+
+Manifest requirements:
+- Add POST_NOTIFICATIONS where appropriate
+- Add RECEIVE_BOOT_COMPLETED
+- Add ReminderNotificationReceiver
+- Add BootCompletedReceiver
+- Handle exported rules correctly
+
+Output format:
+1. Task understanding
+2. Design explanation
+3. Updated file tree
+4. Full code
+5. Gradle updates
+6. Manifest updates
+7. Manual test instructions
+8. Current limitations
+9. Recommended next step
+```
+
+---
+
+# 23. 更强约束版 Prompt
+
+```text id="1623u7"
+Implement Milestone 3 only.
+
+Do not skip files.
+Do not use pseudo-code.
+Do not simulate reminders with timers inside Compose.
+Do not keep reminder state only in memory.
+Do not put AlarmManager logic directly inside ViewModel without abstraction.
+Do not fake notifications.
+Do not implement calendar features yet.
+
+Use package name: com.example.reminderassistant
+
+The code must be runnable and internally consistent.
+
+The implementation must create a real local notification flow:
+save reminder -> schedule -> broadcast receiver -> notification
+
+If a platform limitation exists, state it clearly.
+```
+
+---
+
+# 24. 你验收 AI 产出时重点检查什么
+
+## 24.1 保存是不是“真保存”
+
+* 杀掉 app 再打开，提醒是否仍在
+* 首页是否是从 Room 读，不是内存列表
+
+## 24.2 通知是不是“真调度”
+
+* 不是依赖页面存活
+* 不是用 delay 假装通知
+* 到时间即使 app 不在前台也能提醒
+
+## 24.3 删除 / 完成是不是取消调度
+
+* 删除后还会不会弹通知
+* 完成后还会不会弹通知
+
+## 24.4 NotificationReceiver 是否回查数据库
+
+* 是否根据 reminderId 查询最新状态
+* 是否避免“已删除/已完成还通知”的问题
+
+## 24.5 开机恢复是不是基本可用
+
+* receiver 是否在 manifest 中声明
+* 是否真的重新注册未来提醒
+
+---
+
+# 25. 这轮完成后的理想结果
+
+Milestone 3 完成后，你应该得到一个：
+
+* 能创建提醒
+* 能设置提醒时间
+* 能到点通知
+* 能管理提醒状态
+* 有基本恢复能力
+
+的真正可用雏形。
+
+到这一步，你的 app 已经从“能导入”变成“能真的提醒”。
+
+

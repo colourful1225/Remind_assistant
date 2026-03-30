@@ -1,0 +1,927 @@
+下面是 **Milestone 6 完整任务包**。
+这一轮是你最初设想里最关键、也最难的一部分：**辅助功能增强入口 PoC**。
+
+它的目标不是“真的往微信原生长按菜单里插入一个系统级按钮”，而是做一个**现实可落地的等价体验**：
+
+**当用户在微信、短信等 app 中长按消息或出现候选文本场景时，系统识别并给出一个轻量“提醒 / 加入日历”快捷入口。**
+
+你可以把它保存为：
+
+**`Milestone_6_AI_Task_Pack.md`**
+
+---
+
+# Milestone 6 - AI Development Task Pack
+
+## 1. 本轮目标
+
+本轮聚焦 **辅助功能增强入口 PoC**，目标是验证以下能力链路是否成立：
+
+**用户在目标 app（如微信、短信）中长按消息或进入候选文本场景 -> AccessibilityService 感知界面变化 -> 尝试提取候选文本 -> 显示轻量快捷入口 -> 用户点击后进入既有导入流程**
+
+### 本轮必须完成
+
+1. 新增基础 `AccessibilityService`
+2. 能监听窗口内容变化、窗口状态变化、视图点击/选中等相关事件
+3. 能识别“候选场景”，至少支持：
+
+   * 微信消息长按后的候选场景 PoC
+   * 系统短信或普通文本列表类页面的候选场景 PoC
+4. 能从当前界面或邻近节点中提取候选文本
+5. 构建 `ImportRequest`，并复用既有导入链路
+6. 显示轻量快捷入口 UI
+7. 用户点击后可进入：
+
+   * 导入确认页
+   * 或直接进入提醒 / 日历编辑页（推荐仍先走导入确认页）
+8. 设置页中新增辅助功能相关说明与开关状态展示
+9. 该功能默认关闭，需要用户主动开启系统辅助功能权限
+10. 在无法提取文本或识别失败时，不崩溃、不骚扰
+
+---
+
+# 2. 本轮明确不做
+
+1. 不保证真正把按钮插入第三方 app 原生长按菜单
+2. 不保证支持所有 app
+3. 不做系统级菜单注入
+4. 不做 root / Xposed / Hook
+5. 不做悬浮窗权限方案作为主路径
+6. 不做全屏覆盖层
+7. 不做 OCR 截图识别
+8. 不做复杂节点语义学习
+9. 不做大量 app 的深度定制规则库
+10. 不做后台长期“偷看式”文本采集
+
+---
+
+# 3. 本轮验收标准
+
+## 3.1 Service 验收
+
+* 用户可在系统设置中启用辅助功能服务
+* 服务启用后 app 不崩溃
+* 服务能收到相关 accessibility events
+
+## 3.2 候选场景验收
+
+至少在 1~2 个目标场景中可验证：
+
+* 微信消息长按后出现候选入口，或
+* 系统短信/可见文本消息列表长按后出现候选入口
+
+## 3.3 文本提取验收
+
+* 能提取到一条合理的候选文本
+* 提取失败时不会崩溃
+* 不会把整屏无关内容都塞进去
+
+## 3.4 快捷入口验收
+
+* 出现轻量快捷入口
+* 用户可点击
+* 点击后进入现有导入流程
+* `SourceType` 标记为 `ACCESSIBILITY`
+
+## 3.5 容错验收
+
+* 当界面结构不匹配时，服务静默失败
+* 不会频繁乱弹
+* 不会在任意界面都显示入口
+
+---
+
+# 4. 本轮范围说明
+
+## 4.1 这是 PoC，不是全量兼容方案
+
+这一轮的目标是验证“**辅助功能 + 界面候选识别 + 文本提取 + 快捷入口**”这条链路在真实 app 场景中是否成立。
+
+## 4.2 重点不是覆盖率，而是架构正确
+
+这一轮应该优先确保：
+
+* 架构可扩展
+* 规则可插拔
+* 失败可降级
+* 行为保守
+* 权限解释清晰
+
+---
+
+# 5. 技术要求
+
+延续现有技术栈：
+
+* Kotlin
+* Jetpack Compose
+* MVVM
+* Hilt
+* Room
+* Navigation Compose
+* Coroutines
+* Material 3
+
+本轮新增重点能力：
+
+* AccessibilityService
+* AccessibilityEvent 监听
+* AccessibilityNodeInfo 树遍历
+* 轻量快捷入口展示机制
+* 目标 app 场景规则匹配
+
+---
+
+# 6. AI 实现规则
+
+## 6.1 输出顺序
+
+AI 输出必须严格按以下顺序：
+
+1. 任务理解
+2. 设计说明
+3. 新增 / 修改文件树
+4. 完整代码
+5. Gradle 更新
+6. Manifest 更新
+7. 如何测试
+8. 当前限制
+9. 下一步建议
+
+## 6.2 必须遵守
+
+* 不要承诺“支持所有 app”
+* 不要把辅助功能逻辑散落在 UI 层
+* 不要在 service 中直接写大量业务逻辑而没有抽象
+* 不要默认持续扫描整屏并高频触发
+* 不要在识别不确定时强行弹入口
+* 不要在没有用户明确开启辅助功能时偷偷运行
+* 不要伪造“菜单注入”
+* 不要使用 root / hook 方案
+
+---
+
+# 7. 工程目录要求
+
+在 Milestone 5 基础上，至少新增/完善以下结构：
+
+```text
+app/
+  src/main/java/com/example/reminderassistant/
+    system/
+      accessibility/
+        ReminderAccessibilityService.kt
+        AccessibilityEventRouter.kt
+        AccessibilityNodeTextExtractor.kt
+        AccessibilityOverlayController.kt
+        AccessibilityTargetMatcher.kt
+        AccessibilityImportBridge.kt
+        model/
+          AccessibilityCandidate.kt
+          AccessibilityContext.kt
+          AccessibilityTargetApp.kt
+
+    domain/
+      model/
+        AccessibilitySuggestion.kt
+      usecase/
+        DetectAccessibilityCandidateUseCase.kt
+        BuildAccessibilityImportRequestUseCase.kt
+
+    ui/
+      accessibility/
+        AccessibilityEducationScreen.kt
+        AccessibilityStatusCard.kt
+        AccessibilityQuickActionCard.kt
+
+      settings/
+        SettingsScreen.kt
+        SettingsViewModel.kt
+        SettingsUiState.kt
+```
+
+如果 AI 认为需要增加：
+
+* `WeChatCandidateRule.kt`
+* `SmsCandidateRule.kt`
+* `AccessibilityRuleEngine.kt`
+* `ForegroundWindowDebouncer.kt`
+* `CandidateCooldownStore.kt`
+
+可以增加，但必须说明原因。
+
+---
+
+# 8. SourceType 扩展要求
+
+本轮必须扩展 / 确认 `SourceType` 包含：
+
+* `SHARE`
+* `PROCESS_TEXT`
+* `CLIPBOARD`
+* `ACCESSIBILITY`
+* `MANUAL`
+
+若之前尚未加入 `ACCESSIBILITY`，本轮必须补齐。
+
+---
+
+# 9. 目标产品行为定义
+
+## 9.1 用户体验目标
+
+用户在微信或短信中长按消息后，系统不一定真的改写原菜单，但要尽量实现这种“接近原生”的感受：
+
+* 用户长按消息
+* app 感知这是一个“值得处理”的文本候选场景
+* 在菜单附近、屏幕边缘或 app 内部合适位置出现轻量快捷入口：
+
+  * 加入提醒
+  * 加入日历
+* 用户点击后进入你的 app 的统一导入流程
+
+---
+
+## 9.2 现实边界
+
+必须明确：
+
+* 普通 Android app 无法稳定、公开、标准化地向所有第三方 app 的原生长按菜单直接插项目
+* 本轮做的是“辅助功能增强入口”，不是“全局原生菜单注入”
+
+---
+
+# 10. AccessibilityService 要求
+
+## 10.1 ReminderAccessibilityService
+
+必须实现标准 Android AccessibilityService。
+
+### 需要监听的事件类型
+
+建议至少包括：
+
+* `TYPE_WINDOW_CONTENT_CHANGED`
+* `TYPE_WINDOW_STATE_CHANGED`
+* `TYPE_VIEW_CLICKED`
+* `TYPE_VIEW_SELECTED`
+* `TYPE_VIEW_FOCUSED`
+
+AI 可根据实际需要精简，但必须说明理由。
+
+---
+
+## 10.2 服务行为要求
+
+服务收到事件后：
+
+1. 做基础过滤
+2. 判断当前包名是否为目标 app
+3. 判断是否为候选场景
+4. 若是，则提取候选文本
+5. 生成候选 suggestion
+6. 触发轻量快捷入口
+
+---
+
+## 10.3 必须有防抖/节流
+
+Accessibility event 会很多，必须加：
+
+* 时间防抖
+* 相同窗口/相同文本去重
+* 仅对目标 app 和目标事件做处理
+
+---
+
+# 11. 目标 app 匹配要求
+
+## 11.1 AccessibilityTargetApp
+
+建议定义枚举或模型，例如：
+
+* `WECHAT`
+* `SMS`
+* `UNKNOWN`
+
+字段可包括：
+
+* packageName
+* displayName
+* enabled
+
+---
+
+## 11.2 第一阶段支持范围
+
+这一轮 PoC 至少支持：
+
+### A. 微信
+
+包名通常为：
+
+* `com.tencent.mm`
+
+### B. 系统短信 / 常见短信
+
+包名可能因 ROM 不同而不同，因此建议：
+
+* 先支持 Android AOSP / Google Messages 路径
+* 或做“文本消息列表类通用规则”
+
+AI 必须诚实说明兼容性边界。
+
+---
+
+# 12. 候选场景识别要求
+
+## 12.1 核心思路
+
+辅助功能不是看到任何文本都触发，而是要判断：
+**当前是不是“用户刚刚长按了一条消息，或者界面上出现了候选菜单/选中状态”的场景。**
+
+---
+
+## 12.2 DetectAccessibilityCandidateUseCase
+
+### 职责
+
+根据：
+
+* 当前事件
+* 当前窗口根节点
+* 当前前台 app
+  判断是否存在可处理候选。
+
+### 输出
+
+* `AccessibilityCandidate?`
+
+---
+
+## 12.3 AccessibilityCandidate 至少包含
+
+* `text: String`
+* `sourcePackage: String`
+* `sourceApp: AccessibilityTargetApp`
+* `confidenceScore: Float`
+* `candidateType: ParsedType?`
+* `capturedAt: Long`
+
+---
+
+## 12.4 场景判断规则建议
+
+### 微信 PoC 规则（基础版）
+
+可尝试以下信号组合：
+
+* 前台包名为 `com.tencent.mm`
+* 最近发生窗口内容变化 / 菜单弹出类事件
+* 屏幕中存在“复制 / 转发 / 收藏 / 提醒”等菜单项样式文本
+* 菜单附近或最近焦点附近有消息气泡文本节点
+
+### 短信 PoC 规则（基础版）
+
+可尝试：
+
+* 前台包名为系统短信类 app
+* 某条消息节点被 focused / selected
+* 可在邻近节点找到消息文本
+
+### 通用 fallback 规则
+
+若无法稳定识别长按，但最近存在：
+
+* 焦点文本节点
+* 被点击文本节点
+* 最近可见短文本块且语义像任务/事件
+
+可低置信度给出候选，但要非常保守。
+
+---
+
+# 13. 文本提取要求
+
+## 13.1 AccessibilityNodeTextExtractor
+
+必须独立封装，不要把节点遍历写死在 service 里。
+
+### 职责
+
+从当前窗口节点树中提取最可能的候选文本。
+
+---
+
+## 13.2 提取策略建议
+
+按优先级：
+
+### 1. 当前事件源节点文本
+
+若 source node 自身有合理文本，优先使用。
+
+### 2. source 节点的父/兄弟节点文本
+
+适用于消息气泡结构。
+
+### 3. 最近焦点节点附近文本
+
+适用于菜单弹出后焦点偏移。
+
+### 4. 窗口中最近出现的高价值短文本块
+
+作为保守 fallback。
+
+---
+
+## 13.3 过滤规则
+
+必须过滤掉：
+
+* 菜单文字本身（如“复制”“转发”“删除”）
+* 明显按钮标签
+* 极短无意义文本
+* 过长整屏拼接文本
+* 重复拼接内容
+
+---
+
+# 14. 规则引擎要求
+
+## 14.1 AccessibilityTargetMatcher
+
+负责：
+
+* 根据包名识别当前目标 app
+* 决定使用哪套规则
+
+---
+
+## 14.2 推荐结构
+
+建议做成：
+
+* `AccessibilityRuleEngine`
+
+  * `WeChatCandidateRule`
+  * `SmsCandidateRule`
+  * `GenericTextContextRule`
+
+AI 可以自由命名，但要体现“规则可扩展”。
+
+---
+
+## 14.3 规则要求
+
+每条规则必须返回：
+
+* 是否命中
+* 提取出的文本
+* 置信度
+* 触发理由（便于调试）
+
+这有助于后续调试和迭代。
+
+---
+
+# 15. 轻量快捷入口要求
+
+## 15.1 不要求 SYSTEM_ALERT_WINDOW
+
+本轮不强制走系统悬浮窗权限。
+优先做 **低侵入、可控** 的快捷入口验证方式。
+
+---
+
+## 15.2 可接受方案
+
+### 方案 A：Accessibility service 触发 app 内快速跳转/轻页面
+
+当识别到候选文本时，拉起一个轻量过渡页或底部样式页，展示：
+
+* 候选文本摘要
+* 加入提醒
+* 加入日历
+* 关闭
+
+### 方案 B：启动一个透明/轻量 Activity 作为快捷卡片宿主
+
+只要体验足够轻，不要非常打扰。
+
+### 方案 C：若已有 app 内 suggestion host 架构，可复用
+
+也可接受。
+
+推荐优先：
+**B：轻量透明 Activity / 对话式宿主**
+因为它更接近“跨 app 快捷入口”，且不必依赖悬浮窗权限。
+
+---
+
+## 15.3 AccessibilityQuickActionCard 内容
+
+至少包含：
+
+* 标题建议
+* 原文摘要（1~2 行）
+* 来源 app（微信 / 短信）
+* 按钮：
+
+  * 加入提醒
+  * 加入日历
+  * 关闭
+
+---
+
+## 15.4 触发频率控制
+
+* 同一候选文本短时间内不重复拉起
+* 同一窗口连续事件不重复触发
+* 用户刚关闭后进入强冷却
+
+---
+
+# 16. AccessibilityImportBridge 要求
+
+## 16.1 职责
+
+把 accessibility 捕获到的候选文本桥接到既有导入系统。
+
+### 输入
+
+* `AccessibilityCandidate`
+
+### 输出
+
+* `ImportRequest`
+
+并确保：
+
+* `sourceType = ACCESSIBILITY`
+* `sourceAppPackage/sourceAppName` 有值
+
+---
+
+## 16.2 导航要求
+
+点击快捷入口后，应优先进入：
+
+* `ImportConfirmScreen`
+
+推荐不要直接绕过既有链路，除非你有很明确的理由。
+
+---
+
+# 17. 设置页要求
+
+## 17.1 新增配置展示
+
+设置页必须新增：
+
+### A. 辅助功能增强入口
+
+* 状态显示：未开启 / 已开启
+
+### B. 去开启按钮
+
+* 引导用户跳转到系统辅助功能设置页
+
+### C. 简短说明
+
+例如：
+
+* “用于在微信、短信等场景识别候选文本，并提供快速加入提醒或日历的入口。”
+* “不会保证支持所有 app。”
+
+---
+
+## 17.2 SettingsRepository
+
+建议增加配置项：
+
+* `accessibilityAssistEnabledHintAcknowledged: Boolean`
+* `accessibilitySuggestionCooldownMinutes: Int`
+
+如果 AI 觉得先不持久化全部配置也可以，但辅助功能状态展示逻辑必须合理。
+
+---
+
+# 18. 生命周期与安全要求
+
+## 18.1 服务应保守运行
+
+* 仅在用户启用后运行
+* 仅处理目标 app
+* 仅在目标事件上处理
+* 不做持续全量抓取
+
+## 18.2 日志要求
+
+调试时可记录：
+
+* 包名
+* 规则命中情况
+* 文本长度
+* 置信度
+
+但不得在正式日志中大量输出完整用户敏感文本。
+
+---
+
+# 19. Manifest 要求
+
+本轮必须新增 / 修改：
+
+## 19.1 AccessibilityService 声明
+
+在 manifest 中声明 service，并关联 accessibility service 配置文件。
+
+## 19.2 Accessibility service config
+
+需要新增 XML 配置，例如：
+
+* event types
+* feedback type
+* flags
+* package names（可选）
+* notification timeout
+
+## 19.3 透明/快捷入口 Activity（若使用）
+
+若新增轻量宿主 Activity，需要正确设置 theme / exported 属性。
+
+---
+
+# 20. Gradle 要求
+
+本轮通常无需重型新依赖。
+如需新增：
+
+* lifecycle helpers
+* activity compose support for transparent activity
+
+可以加，但必须说明原因。
+
+原则：
+
+* 优先使用 Android 标准能力
+* 不要引入复杂自动化 UI 框架
+
+---
+
+# 21. 如何测试
+
+AI 必须提供明确手工测试步骤，至少包括：
+
+## 21.1 测试 1：开启辅助功能
+
+1. 安装 app
+2. 进入设置页
+3. 点击跳转到系统辅助功能设置
+4. 手动开启服务
+5. 返回 app，确认状态显示已开启
+
+---
+
+## 21.2 测试 2：微信 PoC
+
+1. 打开微信
+2. 找一条文本消息，例如：
+   `周三下午3点在工大北区开组会`
+3. 长按该消息
+4. 观察是否出现快捷入口
+5. 点击“加入日历”或“加入提醒”
+6. 确认进入 app 导入确认页，且文本被带入
+
+### 预期
+
+* 不要求 100% 命中
+* 但至少在某一版微信/测试环境中可验证一条基本链路
+
+---
+
+## 21.3 测试 3：短信 PoC
+
+1. 打开短信 app
+2. 长按一条文本消息
+3. 观察是否出现快捷入口
+4. 点击后进入导入确认页
+
+---
+
+## 21.4 测试 4：失败降级
+
+1. 在不支持的 app 中频繁点击或滚动
+2. 确认不会乱弹快捷入口
+3. 确认不会崩溃
+
+---
+
+## 21.5 测试 5：去重冷却
+
+1. 在微信同一条消息上重复长按
+2. 关闭快捷入口
+3. 再次长按同一条消息
+
+### 预期
+
+* 不应频繁重复拉起
+* 至少有短时间冷却
+
+---
+
+# 22. 当前阶段限制说明
+
+AI 必须主动说明以下限制：
+
+1. 本轮是辅助功能增强入口 PoC，不保证支持所有 app
+2. 普通 Android app 无法稳定向所有第三方 app 的原生长按菜单直接插入按钮
+3. 微信、短信等 app 的节点结构可能随版本变化而失效
+4. Accessibility event 非常噪声化，需要保守规则，因此召回率有限
+5. 不同 ROM 对辅助功能、后台拉起 Activity 的行为存在差异
+6. 本轮未使用 OCR，因此图片消息、卡片消息支持较弱
+7. 本轮优先验证链路，不保证最终交互就是量产方案
+
+---
+
+# 23. 下一步建议
+
+Milestone 6 完成后，你有两个方向：
+
+## 方向 A：把辅助功能 PoC 做成可用产品能力
+
+下一步：
+
+* 增加更多 app 规则
+* 做更强的候选识别
+* 完善冷却与黑名单机制
+* 做更轻更稳的快捷入口 UI
+
+## 方向 B：先做产品收敛与工程固化
+
+下一步：
+
+* 日志与调试面板
+* 候选命中统计
+* 用户手动反馈“这次识别错了”
+* 设置中心完善
+* 稳定性优化
+
+如果按你原始设想继续推进，我推荐下一轮做：
+
+**Milestone 7：辅助功能规则引擎增强 + 更多目标 app 适配 + 黑白名单与调试面板**
+
+---
+
+# 24. 可直接投喂 AI 的执行 Prompt
+
+下面这段可以直接复制给 AI：
+
+```text
+You are implementing Milestone 6 for an Android app called Global Reminder Assistant.
+
+Goal:
+Implement an accessibility-assisted quick entry PoC for apps like WeChat and SMS.
+
+Tech stack requirements:
+- Kotlin
+- Jetpack Compose
+- MVVM
+- Hilt
+- Room
+- Navigation Compose
+- Coroutines
+- Material 3
+
+Milestone 5 already exists with:
+- app skeleton
+- import flow
+- parser
+- reminder creation and scheduling
+- calendar editor and system calendar intent
+- clipboard suggestion flow
+- settings screen
+
+What must be built in this milestone:
+1. Add a basic AccessibilityService
+2. Listen to relevant accessibility events
+3. Detect candidate scenarios in target apps such as:
+   - WeChat long-press message scenario PoC
+   - SMS / text message scenario PoC
+4. Extract a candidate text from accessibility nodes
+5. Build ImportRequest from accessibility candidate
+6. Show a lightweight quick action entry
+7. Clicking the quick action must enter the existing import flow
+8. Add settings UI for accessibility feature education and status
+9. Default behavior must be conservative and opt-in only
+10. Add dedupe / cooldown for repeated triggers
+
+Recommended architecture:
+- ReminderAccessibilityService
+- AccessibilityEventRouter
+- AccessibilityTargetMatcher
+- AccessibilityNodeTextExtractor
+- DetectAccessibilityCandidateUseCase
+- AccessibilityImportBridge
+- lightweight quick action host UI
+
+Constraints:
+- Do NOT claim to inject into all third-party native context menus
+- Do NOT use root, hook, or Xposed approaches
+- Do NOT support every app
+- Do NOT spam the user
+- Keep service logic modular and explainable
+- Keep code runnable and internally consistent
+
+Required behavior:
+- SourceType must support ACCESSIBILITY
+- Reuse existing import flow
+- Fail safely when candidate extraction is uncertain
+
+Output format:
+1. Task understanding
+2. Design explanation
+3. Updated file tree
+4. Full code
+5. Gradle updates
+6. Manifest updates
+7. Manual test instructions
+8. Current limitations
+9. Recommended next step
+```
+
+---
+
+# 25. 更强约束版 Prompt
+
+```text
+Implement Milestone 6 only.
+
+Do not skip files.
+Do not use pseudo-code.
+Do not claim full support for all apps.
+Do not fake native context menu injection.
+Do not use root, hook, Xposed, or overlay permission as the main solution.
+Do not keep all accessibility logic in one giant service file.
+Do not trigger quick actions aggressively.
+
+Use package name: com.example.reminderassistant
+
+The code must be runnable and internally consistent.
+
+The implementation must support:
+accessibility event -> candidate detection -> text extraction -> quick action -> existing import flow
+
+If platform limitations exist, state them clearly.
+```
+
+---
+
+# 26. 你验收 AI 产出时重点检查什么
+
+## 26.1 服务是不是“真服务”
+
+* manifest 是否正确声明
+* accessibility config 是否存在
+* 系统设置里能否打开
+* 打开后是否真的收到事件
+
+## 26.2 识别逻辑是不是可扩展
+
+* 是否有规则层 / matcher / extractor 抽象
+* 不是所有逻辑都塞一个大文件里
+
+## 26.3 快捷入口是不是“轻量且可控”
+
+* 不会在所有界面乱弹
+* 能关闭
+* 关闭后有冷却
+* 点击后能进入现有导入流程
+
+## 26.4 文本提取是不是“合理”
+
+* 不是拿到整屏文本
+* 不是拿菜单文字
+* 至少能命中某条真实消息文本
+
+## 26.5 平台边界是否诚实
+
+* 有没有明确说明这是 PoC
+* 有没有避免承诺“能改写微信原生长按菜单”
+
+---
+
+# 27. 这轮完成后的理想结果
+
+Milestone 6 完成后，你应该得到一个：
+
+* 用户可主动开启
+* 能在微信 / 短信等特定场景尝试识别候选文本
+* 能弹出轻量快捷入口
+* 能把候选文本送入现有提醒 / 日历流程
+
+的**辅助功能增强 PoC**。
+
+这已经非常接近你最初的核心设想了。
+虽然它不是“系统级给所有长按菜单加一项”，但从产品体验上，它已经在很多关键场景里提供了一个**几乎等价的快速入口**。

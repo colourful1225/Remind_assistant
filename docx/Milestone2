@@ -1,0 +1,1089 @@
+下面是 **Milestone 2 完整任务包**。
+这一轮的目标是把“**外部文本进入 app**”这条主链路真正打通，让你的工程从“骨架”进入“可用雏形”。
+
+你可以把它保存为：
+
+**`Milestone_2_AI_Task_Pack.md`**
+
+---
+
+# Milestone 2 - AI Development Task Pack
+
+## 1. 本轮目标
+
+本轮聚焦 **文本导入与基础解析**，只做最核心主链路：
+
+**外部文本 -> ImportRequest -> 基础解析 -> 导入确认页展示真实内容 -> 用户继续进入提醒编辑页或日历编辑页**
+
+### 本轮必须完成
+
+1. 支持从其他 app 通过 **分享文本** 进入本 app
+2. 支持基础的 **Process Text** 入口骨架
+3. 定义并打通 `ImportRequest` 传递链路
+4. 新增基础文本解析模块
+5. 使用真实导入文本渲染 `ImportConfirmScreen`
+6. 展示解析结果：
+
+   * 原文
+   * 清洗后文本
+   * 建议标题
+   * 建议类型（TODO / EVENT / UNKNOWN）
+   * 识别到的时间文本或时间戳
+   * 识别到的地点
+   * 置信度
+7. 用户可以从导入确认页选择：
+
+   * 继续作为提醒
+   * 继续作为日历事件
+8. `ReminderEditorScreen` 能接收导入结果并预填表单
+9. `CalendarEditorScreen` 能接收导入结果并预填表单骨架
+10. 整体链路能运行且不崩溃
+
+---
+
+# 2. 本轮明确不做
+
+1. 不做通知调度
+2. 不做真正的系统日历 Intent 调起
+3. 不做剪贴板监听
+4. 不做辅助功能
+5. 不做 OCR
+6. 不做复杂自然语言解析
+7. 不做多语言高级时间理解
+8. 不做 Provider 直写
+9. 不做深度来源 app 识别策略
+10. 不做完整的保存后通知闭环
+
+---
+
+# 3. 本轮验收标准
+
+## 3.1 导入验收
+
+* 用户能从其他 app 通过分享文本进入本 app
+* app 不崩溃
+* 导入内容在 `ImportConfirmScreen` 可见
+
+## 3.2 解析验收
+
+对于输入文本，系统至少能给出：
+
+* 原文
+* 清洗后文本
+* 建议标题
+* 建议类型
+* 基础时间解析结果
+* 基础地点解析结果
+* 置信度
+
+## 3.3 页面联动验收
+
+* 在导入确认页点击“作为提醒继续”后，进入 `ReminderEditorScreen`
+* 页面已预填标题与备注
+* 在导入确认页点击“作为日历事件继续”后，进入 `CalendarEditorScreen`
+* 页面已预填标题、描述、地点、时间占位
+
+## 3.4 路由验收
+
+* `ShareReceiverActivity` 能接收分享 intent
+* 能将数据传递给导航宿主或导入页
+* 页面回退行为合理
+
+## 3.5 架构验收
+
+新增代码仍须遵守：
+
+* UI / Domain / Data / System Integration 分层
+* 解析器逻辑独立
+* 不得把 Intent 解析逻辑直接塞进 UI 页面
+
+---
+
+# 4. 本轮范围说明
+
+## 4.1 本轮核心是打通“导入”
+
+本轮不是追求解析多强，而是追求：
+
+* 结构正确
+* 流程完整
+* 后续可扩展
+
+## 4.2 解析能力只做“基础版”
+
+基础版只需要支持常见中文表达中的一小部分模式，采用**规则优先**方案即可。
+
+---
+
+# 5. 技术要求
+
+## 5.1 延续 Milestone 1 技术栈
+
+* Kotlin
+* Jetpack Compose
+* MVVM
+* Hilt
+* Room
+* Navigation Compose
+* Coroutines
+* Material 3
+
+## 5.2 新增模块方向
+
+这一轮应新增：
+
+* `system/share`
+* `parser`
+* `domain/usecase/ParseIncomingTextUseCase`
+* 导入状态管理
+
+---
+
+# 6. AI 实现规则
+
+## 6.1 输出顺序
+
+AI 输出必须严格按以下顺序：
+
+1. 任务理解
+2. 设计说明
+3. 新增 / 修改文件树
+4. 完整代码
+5. Gradle 更新
+6. Manifest 更新
+7. 如何测试
+8. 当前限制
+9. 下一步建议
+
+## 6.2 必须遵守
+
+* 不要跳过关键文件
+* 不要把解析逻辑硬写在 Activity 里
+* 不要把导入文本只保存在全局静态变量里
+* 不要用“假装支持分享”的伪代码
+* 代码必须可编译、可运行
+* 数据传递方式要清晰可维护
+
+---
+
+# 7. 工程目录要求
+
+Milestone 2 在 Milestone 1 的基础上，至少新增/完善如下结构：
+
+```text id="gu0y3p"
+app/
+  src/main/java/com/example/reminderassistant/
+    system/
+      share/
+        ShareReceiverActivity.kt
+        ProcessTextActivity.kt
+        ImportRouteContract.kt
+
+    parser/
+      TextCleaner.kt
+      TimeParser.kt
+      LocationParser.kt
+      TitleGenerator.kt
+      ContentClassifier.kt
+      DefaultTextParser.kt
+
+    domain/
+      model/
+        ParsedType.kt
+        SourceType.kt
+        ParseResult.kt
+      usecase/
+        ParseIncomingTextUseCase.kt
+
+    ui/
+      importflow/
+        ImportConfirmScreen.kt
+        ImportConfirmViewModel.kt
+        ImportUiState.kt
+      reminder/
+        ReminderEditorScreen.kt
+        ReminderEditorViewModel.kt
+      calendar/
+        CalendarEditorScreen.kt
+        CalendarEditorViewModel.kt
+
+    navigation/
+      NavArguments.kt
+      AppNavGraph.kt
+```
+
+如果 AI 认为需要增加辅助类，例如：
+
+* SavedStateHandle 辅助封装
+* Route encoder / decoder
+* Json serializer helper
+
+可以增加，但必须说明原因。
+
+---
+
+# 8. 本轮要实现的主要链路
+
+## 8.1 链路 A：通过分享文本进入 app
+
+### 用户动作
+
+在浏览器、短信、笔记等 app 中选择“分享”文本到本 app。
+
+### 系统行为
+
+系统启动 `ShareReceiverActivity`。
+
+### 应用行为
+
+1. 读取 intent 中的文本
+2. 构建 `ImportRequest`
+3. 调用 `ParseIncomingTextUseCase`
+4. 将结果导向 `ImportConfirmScreen`
+
+---
+
+## 8.2 链路 B：通过处理文本进入 app
+
+### 用户动作
+
+在可选中文本场景中触发“处理文本”
+
+### 系统行为
+
+启动 `ProcessTextActivity`
+
+### 应用行为
+
+与分享文本路径类似：
+
+1. 获取选中文本
+2. 构建 `ImportRequest`
+3. 调用解析逻辑
+4. 进入导入确认页
+
+### 注意
+
+这一轮即便某些 ROM 对 `ACTION_PROCESS_TEXT` 支持不稳定，也必须把标准入口结构写好。
+
+---
+
+## 8.3 链路 C：从导入确认页继续
+
+### 继续作为提醒
+
+进入 `ReminderEditorScreen`，并预填：
+
+* title = suggestedTitle
+* note = rawText 或 cleanedText
+* rawText 可保留展示
+
+### 继续作为日历事件
+
+进入 `CalendarEditorScreen`，并预填：
+
+* title = suggestedTitle
+* description = rawText
+* location = detectedLocation
+* startTime = detectedTime（若有）
+
+---
+
+# 9. 数据模型要求
+
+## 9.1 新增枚举
+
+### ParsedType
+
+必须定义：
+
+* `TODO`
+* `EVENT`
+* `UNKNOWN`
+
+### SourceType
+
+必须定义：
+
+* `SHARE`
+* `PROCESS_TEXT`
+* `MANUAL`
+
+---
+
+## 9.2 ParseResult
+
+建议单独定义，至少包含：
+
+* `importRequest: ImportRequest`
+* `parsedContent: ParsedContent`
+
+如果 AI 认为已有 `ParsedContent` 足够，也可以不额外定义 `ParseResult`，但必须说明设计理由。
+
+---
+
+## 9.3 ParsedContent 字段要求
+
+至少应有：
+
+* `rawText: String`
+* `cleanedText: String`
+* `suggestedTitle: String`
+* `detectedType: ParsedType`
+* `detectedTimeText: String?`
+* `detectedTimeMillis: Long?`
+* `detectedLocation: String?`
+* `confidenceScore: Float`
+
+说明：
+
+* 这一轮为了便于展示，建议同时保留 `detectedTimeText`
+* 时间戳解析失败时允许为空
+
+---
+
+## 9.4 ImportRequest 字段要求
+
+至少应有：
+
+* `text: String`
+* `sourceContext: SourceContext`
+
+---
+
+## 9.5 SourceContext 字段要求
+
+至少应有：
+
+* `sourceType: SourceType`
+* `sourceAppPackage: String?`
+* `sourceAppName: String?`
+* `receivedAt: Long`
+
+---
+
+# 10. 解析器要求
+
+这一轮采用**规则优先、轻量、可解释**的实现。
+
+---
+
+## 10.1 TextCleaner
+
+### 职责
+
+对原始文本做清洗。
+
+### 要求
+
+至少包括：
+
+* trim 前后空白
+* 多个空格合并
+* 连续换行压缩
+* 中文全角空格清理
+* 保留原意，不做激进改写
+
+### 输入
+
+`String`
+
+### 输出
+
+`String`
+
+---
+
+## 10.2 TimeParser
+
+### 这一轮必须支持的模式
+
+至少支持以下常见表达：
+
+* 今天
+* 明天
+* 后天
+* 周一 / 周二 / 周三 / 周四 / 周五 / 周六 / 周日
+* 下午 3 点
+* 3 点
+* 17:30
+* 14:00
+* 4 月 2 日
+* 4/2
+* “明天下午 5 点”
+* “周三 15:00”
+
+### 输出建议
+
+建议输出一个数据类，例如：
+
+* `matchedText`
+* `timeMillis`
+* `isAllDay`
+
+如果 AI 只返回简单结构也可以，但必须能满足 UI 展示需求。
+
+### 允许的简化
+
+* 默认时区使用系统时区
+* 无法推断年份时默认当前年
+* 无法推断分钟时默认为 `00`
+* 无法推断“上午/下午”时按 24 小时逻辑保守处理
+
+---
+
+## 10.3 LocationParser
+
+### 这一轮支持的简单规则
+
+从文本中识别常见地点表达，例如：
+
+* `在 XXX`
+* `地点：XXX`
+* `地点: XXX`
+* `于 XXX`
+* `到 XXX`
+
+### 允许的简化
+
+* 只截取短片段
+* 不做复杂 NER
+* 不要求 100% 准确
+
+---
+
+## 10.4 TitleGenerator
+
+### 基础规则
+
+优先识别以下场景关键词：
+
+#### 快递类
+
+* 快递
+* 包裹
+* 取件
+* 驿站
+
+生成建议：
+
+* 取快递
+* 领取包裹
+
+#### 会议类
+
+* 组会
+* 会议
+* 面试
+* 答辩
+* 上课
+
+生成建议：
+
+* 组会
+* 会议
+* 面试
+* 答辩
+* 上课
+
+#### 提交/办理类
+
+* 提交
+* 交
+* 办理
+* 确认
+* 缴费
+* 领取
+
+生成建议：
+
+* 提交事项
+* 办理事项
+* 确认事项
+* 缴费
+
+#### 默认策略
+
+如果无法命中特征词：
+
+* 取清洗后文本前 8~16 个有效字符作为标题建议
+
+---
+
+## 10.5 ContentClassifier
+
+### 目标
+
+判断更适合作为：
+
+* TODO
+* EVENT
+* UNKNOWN
+
+### 建议规则
+
+若满足以下任一情况，则倾向 `EVENT`：
+
+* 有明确开始时间
+* 出现“会议/组会/面试/答辩/上课/活动”等事件类词
+
+若满足以下任一情况，则倾向 `TODO`：
+
+* 出现“记得/去/拿/取/交/提交/办理/确认/缴费”等任务类词
+* 出现截止语义但无明确事件时间
+
+否则：
+
+* `UNKNOWN`
+
+---
+
+## 10.6 DefaultTextParser
+
+### 职责
+
+统一组合：
+
+* TextCleaner
+* TimeParser
+* LocationParser
+* TitleGenerator
+* ContentClassifier
+
+### 输入
+
+`ImportRequest`
+
+### 输出
+
+`ParsedContent`
+
+---
+
+# 11. UseCase 要求
+
+## 11.1 ParseIncomingTextUseCase
+
+### 职责
+
+对 `ImportRequest` 执行完整基础解析。
+
+### 输入
+
+`ImportRequest`
+
+### 输出
+
+`ParsedContent`
+
+### 要求
+
+* 由 ViewModel 调用
+* 通过依赖注入获得 parser 实现
+* 不依赖 UI
+
+---
+
+# 12. Share 接收模块要求
+
+## 12.1 ShareReceiverActivity
+
+### 职责
+
+接收系统分享过来的文本。
+
+### 必须支持
+
+* `Intent.ACTION_SEND`
+* `type = "text/plain"` 为主
+
+### 行为要求
+
+1. 读取 `Intent.EXTRA_TEXT`
+2. 如果为空，给出友好处理并退出
+3. 构建 `ImportRequest`
+4. 触发导入流程
+
+### 设计建议
+
+不要在 Activity 中做完整业务处理。可选两种合理方案：
+
+#### 方案 A
+
+`ShareReceiverActivity` 作为 trampoline：
+
+* 解析 intent
+* 编码为 route 参数
+* 跳到 MainActivity/NavHost 对应页面
+
+#### 方案 B
+
+`ShareReceiverActivity` 自己持有一个很轻量的 Compose 容器，再进入导入页逻辑
+
+推荐优先：
+**A：trampoline + route argument / saved state handle**
+
+但 AI 可自主选择，只要结构清晰。
+
+---
+
+## 12.2 ProcessTextActivity
+
+### 职责
+
+承接 `ACTION_PROCESS_TEXT`
+
+### 行为要求
+
+* 读取选中文本
+* 构建 `ImportRequest`
+* 进入导入确认页
+
+### 注意
+
+这一轮允许与分享接收共用一部分导入逻辑。
+
+---
+
+## 12.3 ImportRouteContract
+
+建议新增统一封装：
+
+* 如何把导入文本放入导航参数
+* 如何避免超长文本直接塞进 route 导致问题
+
+推荐做法：
+
+* 使用 `SavedStateHandle`
+* 或中转 ViewModel / shared state store
+* 或使用 JSON + URL encode，但要注意长度
+
+AI 必须选择一种**可维护**的方式，并说明原因。
+
+---
+
+# 13. 导入确认页要求
+
+## 13.1 ImportConfirmViewModel
+
+### 必须职责
+
+* 接收导入内容
+* 调用 `ParseIncomingTextUseCase`
+* 暴露 `ImportUiState`
+
+### ImportUiState 至少包含
+
+* `rawText`
+* `cleanedText`
+* `suggestedTitle`
+* `detectedType`
+* `detectedTimeText`
+* `detectedLocation`
+* `confidenceScore`
+* `isLoading`
+* `errorMessage`
+
+---
+
+## 13.2 ImportConfirmScreen UI 要求
+
+页面必须展示：
+
+### 区块 1：原文
+
+* 原始文本全文
+
+### 区块 2：解析结果
+
+* 清洗后文本
+* 建议标题
+* 建议类型
+* 时间解析结果
+* 地点解析结果
+* 置信度
+
+### 区块 3：动作按钮
+
+* 按钮 1：作为提醒继续
+* 按钮 2：作为日历事件继续
+
+### 区块 4：容错
+
+* 若解析失败或结果不足，也允许用户继续
+
+---
+
+# 14. ReminderEditor 页面修改要求
+
+Milestone 1 中的 ReminderEditor 现在要升级成“可接收导入预填”。
+
+## 14.1 需要支持的预填字段
+
+* 标题
+* 备注
+* 原始文本（可只用于备注）
+* 来源 app 名称（可选显示）
+
+## 14.2 ViewModel 要求
+
+* 支持从导航参数或共享导入状态初始化表单
+* 用户仍可手动编辑
+
+## 14.3 保存逻辑
+
+* 继续使用基础版保存即可
+* reminderTime 这一轮仍可暂不实现时间选择器
+
+---
+
+# 15. CalendarEditor 页面修改要求
+
+Milestone 1 中的 CalendarEditor 现在要升级成“可接收导入预填”。
+
+## 15.1 需要支持的字段
+
+* 标题
+* 描述
+* 开始时间文本或占位
+* 结束时间占位
+* 地点
+
+## 15.2 ViewModel 要求
+
+* 能从导入结果初始化页面状态
+* 结束时间可默认留空，或默认开始时间 +1 小时占位文本
+
+## 15.3 当前阶段不要求
+
+* 不要求真的调用系统日历
+* 但应保留一个按钮与 TODO 注释，说明下一阶段接入
+
+---
+
+# 16. Navigation 要求
+
+## 16.1 必须支持的页面跳转
+
+* 首页 -> 导入确认页
+* 导入确认页 -> 提醒编辑页
+* 导入确认页 -> 日历编辑页
+* 分享接收 -> 导入确认页
+* 处理文本 -> 导入确认页
+
+## 16.2 参数传递要求
+
+由于导入文本可能较长，不建议简单把全文直接塞进 route path。
+AI 必须采用一种合理方案，例如：
+
+* `savedStateHandle`
+* `SharedViewModel`
+* `Parcelable + bundle`
+* 轻量 in-memory import session store
+
+但不能是不可维护的随意全局单例。
+
+推荐优先：
+**navigation saved state + serialized minimal payload**
+
+---
+
+# 17. Manifest 要求
+
+Milestone 2 需要新增/修改：
+
+## 17.1 ShareReceiverActivity
+
+应声明 intent filter，大致包括：
+
+* `action.SEND`
+* `category.DEFAULT`
+* `mimeType = text/plain`
+
+## 17.2 ProcessTextActivity
+
+应声明 intent filter，大致包括：
+
+* `action.PROCESS_TEXT`
+* `category.DEFAULT`
+* `mimeType = text/plain`
+
+## 17.3 MainActivity
+
+继续作为主导航宿主存在
+
+### 注意
+
+AI 必须正确处理 exported 属性与 Android 12+ 要求。
+
+---
+
+# 18. Gradle 要求
+
+Milestone 2 如需新增依赖，只允许在合理范围内补充，例如：
+
+* serialization（如果用）
+* parcelize（如果用）
+* datetime（如果用更清晰的时间处理）
+
+若无必要，不应引入重型 NLP 依赖。
+
+---
+
+# 19. 如何测试
+
+AI 必须给出明确测试步骤，至少包括：
+
+## 19.1 手工测试：分享文本
+
+1. 安装 app
+2. 打开浏览器或便签
+3. 选一段文本并点击分享
+4. 选择本 app
+5. 检查是否进入导入确认页
+6. 检查原文与解析结果是否显示
+
+## 19.2 手工测试：示例文本
+
+建议至少测试这些输入：
+
+### 示例 1
+
+`明天下午5点去北区取韵达快递，取件码6327`
+
+预期：
+
+* 标题：取快递 / 取韵达快递
+* 类型：TODO
+* 时间：明天 17:00
+* 地点：北区
+
+### 示例 2
+
+`周三下午3点在工大北区开组会`
+
+预期：
+
+* 标题：组会
+* 类型：EVENT
+* 时间：周三 15:00
+* 地点：工大北区
+
+### 示例 3
+
+`下周一前提交实验报告`
+
+预期：
+
+* 标题：提交事项 / 提交实验报告
+* 类型：TODO
+* 时间：可为空或保守处理
+* 地点：空
+
+### 示例 4
+
+`4月2日14:00在行政楼205面试`
+
+预期：
+
+* 标题：面试
+* 类型：EVENT
+* 时间：4月2日 14:00
+* 地点：行政楼205
+
+---
+
+# 20. 当前阶段限制说明
+
+AI 必须主动说明以下限制：
+
+1. 时间解析是规则型基础版，不覆盖所有中文时间表达
+2. 地点解析仅为浅规则匹配
+3. 还未接入通知提醒
+4. 还未接入系统日历
+5. `ACTION_PROCESS_TEXT` 在不同 ROM 表现可能不同
+6. 长文本参数传递策略可能需要后续增强
+7. 目前未做持久化的“导入历史”管理
+
+---
+
+# 21. 下一步建议
+
+Milestone 2 完成后，应进入 **Milestone 3：提醒创建与通知调度**。
+
+下一步目标：
+
+1. 让 ReminderEditor 支持真实设置 reminderTime
+2. 保存 reminder 后注册本地提醒
+3. 到时发通知
+4. 首页展示提醒时间与状态
+5. 支持删除提醒 / 标记完成
+
+---
+
+# 22. 可直接投喂 AI 的执行 Prompt
+
+下面这段可以直接复制给 AI：
+
+```text id="286go0"
+You are implementing Milestone 2 for an Android app called Global Reminder Assistant.
+
+Goal:
+Implement text import and basic parsing flow.
+
+Tech stack requirements:
+- Kotlin
+- Jetpack Compose
+- MVVM
+- Hilt
+- Room
+- Navigation Compose
+- Coroutines
+- Material 3
+
+Milestone 1 already exists with:
+- app skeleton
+- navigation
+- Room database
+- basic reminder editor
+- placeholder screens
+
+What must be built in this milestone:
+1. Support receiving shared text via Android share sheet
+2. Add PROCESS_TEXT entry structure
+3. Build ImportRequest flow
+4. Build a lightweight parser module with:
+   - TextCleaner
+   - TimeParser
+   - LocationParser
+   - TitleGenerator
+   - ContentClassifier
+   - DefaultTextParser
+5. Add ParseIncomingTextUseCase
+6. ImportConfirmScreen must display real imported text and parsed results
+7. User can continue as reminder or as calendar event
+8. ReminderEditorScreen must accept prefilled imported data
+9. CalendarEditorScreen must accept prefilled imported data
+10. Keep implementation lightweight and extensible
+
+Required parsing outputs:
+- rawText
+- cleanedText
+- suggestedTitle
+- detectedType
+- detectedTimeText
+- detectedTimeMillis
+- detectedLocation
+- confidenceScore
+
+Constraints:
+- Do NOT implement notifications yet
+- Do NOT implement actual calendar intent yet
+- Do NOT implement clipboard monitoring
+- Do NOT implement accessibility features
+- Use simple rule-based parsing only
+- Keep parsing logic outside UI
+- Keep intent handling outside composables
+- Use a maintainable method for passing import data into navigation
+
+Manifest requirements:
+- Add ShareReceiverActivity for ACTION_SEND text/plain
+- Add ProcessTextActivity for ACTION_PROCESS_TEXT text/plain
+- Handle exported rules correctly
+
+Output format:
+1. Task understanding
+2. Design explanation
+3. Updated file tree
+4. Full code
+5. Gradle updates
+6. Manifest updates
+7. Manual test instructions
+8. Current limitations
+9. Recommended next step
+```
+
+---
+
+# 23. 更强约束版 Prompt
+
+这版更适合你不想让 AI 乱发挥时使用：
+
+```text id="yhj4jv"
+Implement Milestone 2 only.
+
+Do not skip files.
+Do not use pseudo-code.
+Do not put parser logic inside Activity or Screen.
+Do not store imported text in a random global singleton without explanation.
+Do not fake share support.
+Do not implement advanced NLP.
+Do not add unnecessary third-party libraries.
+
+Use package name: com.example.reminderassistant
+
+The code must be runnable and internally consistent.
+
+Use a clean and explainable import flow:
+external text -> ImportRequest -> parser -> ImportConfirmViewModel -> UI
+
+If any platform limitation exists, state it clearly.
+```
+
+---
+
+# 24. 你验收 AI 产出时重点检查什么
+
+## 24.1 分享入口是否真能拉起
+
+不是只写了 Manifest，而是：
+
+* 从其他 app 分享文本
+* 真的能进入本 app
+* 真的能拿到文本
+
+## 24.2 导入确认页是不是显示真实数据
+
+不是写死假数据，而是：
+
+* 原文来自 intent
+* 解析结果来自 parser
+
+## 24.3 解析模块是不是独立
+
+检查：
+
+* 是否有 `parser/` 模块文件
+* ViewModel 是否调用 UseCase
+* UI 是否只负责展示
+
+## 24.4 参数传递是否可维护
+
+检查：
+
+* 有没有把整段长文本直接硬塞在 route path
+* 有没有说明为什么这样设计
+* 后续是否容易扩展为 clipboard / accessibility 输入
+
+## 24.5 ReminderEditor / CalendarEditor 是否真预填
+
+点按钮后：
+
+* 标题是否已带过去
+* 备注/描述是否已带过去
+* 地点/时间占位是否已带过去
+
+---
+
+# 25. 这轮完成后的理想结果
+
+Milestone 2 完成后，你应该得到一个：
+
+* 能接收外部文本
+* 能做基础解析
+* 能展示导入确认
+* 能把结果带进后续编辑页
+
+的应用雏形。
+
+这意味着你的产品第一次具备了真正的“从信息进入提醒流程”的能力。

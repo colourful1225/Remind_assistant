@@ -1,0 +1,802 @@
+下面是 **Milestone 4 完整任务包**。
+这一轮的目标是把“**导入内容 -> 日历事件草稿 -> 打开系统日历新增页**”这条链路打通。
+
+你可以把它保存为：
+
+**`Milestone_4_AI_Task_Pack.md`**
+
+---
+
+# Milestone 4 - AI Development Task Pack
+
+## 1. 本轮目标
+
+本轮聚焦 **日历编辑完善、系统日历 Intent 集成、事件字段自动带入、失败降级策略**。
+
+在 Milestone 3 的基础上，本轮要实现：
+
+**导入文本 -> 解析结果 -> 进入 CalendarEditor -> 用户可编辑事件 -> 调起系统日历新增事件页 -> 预填标题/时间/地点/描述**
+
+### 本轮必须完成
+
+1. `CalendarEditorScreen` 从占位页升级为真实可编辑页面
+2. `CalendarEditorViewModel` 支持接收导入预填数据
+3. 建立 `CalendarDraft` 的构建逻辑
+4. 新增 `BuildCalendarDraftUseCase`
+5. 新增系统日历集成封装，例如 `CalendarIntentLauncher`
+6. 支持通过 Intent 打开系统日历新增事件页
+7. 自动带入以下字段：
+
+   * 标题
+   * 描述
+   * 开始时间
+   * 结束时间
+   * 全天标记
+   * 地点
+8. 若只有开始时间没有结束时间，提供合理默认值
+9. 若没有识别到明确时间，允许用户手动填写或保守降级
+10. 无法调起系统日历时，给出清晰反馈与降级方案
+
+---
+
+# 2. 本轮明确不做
+
+1. 不做 Calendar Provider 直写
+2. 不做编辑已有系统日历事件
+3. 不做读取系统日历列表
+4. 不做重复规则高级编辑
+5. 不做参会人邀请
+6. 不做 Google Meet / 会议链接生成
+7. 不做日历权限强依赖方案
+8. 不做多日程冲突检测
+9. 不做复杂时区处理
+10. 不做附件、图片、链接富文本事件
+
+---
+
+# 3. 本轮验收标准
+
+## 3.1 页面验收
+
+* `CalendarEditorScreen` 不是占位页，而是实际表单页
+* 至少支持编辑：
+
+  * 标题
+  * 描述
+  * 开始时间
+  * 结束时间
+  * 全天
+  * 地点
+
+## 3.2 预填验收
+
+从 `ImportConfirmScreen` 进入日历编辑页时，应能预填：
+
+* 标题
+* 描述
+* 地点
+* 开始时间（若识别到）
+* 结束时间默认值（若可推断）
+
+## 3.3 跳转验收
+
+点击“加入系统日历”后：
+
+* 成功打开系统日历新增事件页
+* 事件字段被正确带入
+
+## 3.4 降级验收
+
+若系统没有可处理该 Intent 的日历 app：
+
+* app 不崩溃
+* 给出用户可理解提示
+* 提供降级方案，例如返回提醒模式或仅保存文本
+
+## 3.5 架构验收
+
+* 日历 Intent 逻辑不得直接散落在 Composable 中
+* 通过 `CalendarIntentLauncher` 或等价封装完成
+* `CalendarDraft` 与 UI 状态有清晰边界
+
+---
+
+# 4. 本轮范围说明
+
+## 4.1 本轮核心是“系统日历接入”
+
+这一轮的目标不是做一个完整日历 app，而是把你的提醒助手和系统日历打通。
+
+## 4.2 采用 Intent 而不是 Provider 直写
+
+本轮优先使用系统标准方式：
+
+* 打开系统日历新增事件页
+* 由用户确认保存
+
+这样：
+
+* 风险更低
+* 权限更少
+* 兼容性更好
+* 更符合 MVP
+
+---
+
+# 5. 技术要求
+
+延续已有技术栈：
+
+* Kotlin
+* Jetpack Compose
+* MVVM
+* Hilt
+* Room
+* Navigation Compose
+* Coroutines
+* Material 3
+
+本轮新增重点能力：
+
+* Calendar Insert Intent
+* 日历草稿构建
+* 日期时间编辑表单
+* 失败降级处理
+
+---
+
+# 6. AI 实现规则
+
+## 6.1 输出顺序
+
+AI 输出必须严格按以下顺序：
+
+1. 任务理解
+2. 设计说明
+3. 新增 / 修改文件树
+4. 完整代码
+5. Gradle 更新
+6. Manifest 更新
+7. 如何测试
+8. 当前限制
+9. 下一步建议
+
+## 6.2 必须遵守
+
+* 不要把 Intent 构建逻辑直接写在 Screen 里
+* 不要让 ViewModel 直接持有 Context 做重型系统调用
+* 不要假装系统一定存在日历 app
+* 不要强依赖 READ/WRITE_CALENDAR 权限
+* 不要直接跳过用户确认、偷偷写入系统日历
+* 不要把 CalendarDraft 和 UI state 混成一个无边界对象
+* 不要为了省事删掉已有导入流程
+
+---
+
+# 7. 工程目录要求
+
+在 Milestone 3 基础上，至少新增/完善以下结构：
+
+```text id="yq6uvj"
+app/
+  src/main/java/com/example/reminderassistant/
+    domain/
+      model/
+        CalendarDraft.kt
+      usecase/
+        BuildCalendarDraftUseCase.kt
+
+    system/
+      calendar/
+        CalendarIntentLauncher.kt
+        CalendarIntentLauncherImpl.kt
+        CalendarIntentFactory.kt
+
+    ui/
+      calendar/
+        CalendarEditorScreen.kt
+        CalendarEditorViewModel.kt
+        CalendarEditorUiState.kt
+        CalendarDateTimeField.kt
+
+    util/
+      DateTimeFormatter.kt
+```
+
+如果 AI 认为需要增加：
+
+* `CalendarAvailabilityChecker`
+* `CalendarFormMapper`
+* `UiEvent`
+* `IntentResolverHelper`
+
+可以增加，但必须说明原因。
+
+---
+
+# 8. 数据模型要求
+
+## 8.1 CalendarDraft
+
+如果前面已经定义过，本轮要完善。至少包含：
+
+* `title: String`
+* `description: String`
+* `startTime: Long?`
+* `endTime: Long?`
+* `allDay: Boolean`
+* `location: String?`
+
+可选增加：
+
+* `sourceRawText: String?`
+* `suggestedDurationMinutes: Int?`
+
+---
+
+## 8.2 CalendarEditorUiState
+
+至少包含：
+
+* `title: String`
+* `description: String`
+* `startTime: Long?`
+* `endTime: Long?`
+* `formattedStartTime: String`
+* `formattedEndTime: String`
+* `allDay: Boolean`
+* `location: String`
+* `isLaunchingCalendar: Boolean`
+* `errorMessage: String?`
+
+---
+
+## 8.3 导入预填映射
+
+从 `ParsedContent` 进入 CalendarEditor 时，至少有以下映射：
+
+* `title <- suggestedTitle`
+* `description <- rawText`
+* `location <- detectedLocation ?: ""`
+* `startTime <- detectedTimeMillis`
+* `endTime <- inferred default if possible`
+
+---
+
+# 9. UseCase 要求
+
+## 9.1 BuildCalendarDraftUseCase
+
+### 职责
+
+根据解析结果或表单内容生成标准化的 `CalendarDraft`。
+
+### 输入
+
+可接受任一合理方案：
+
+#### 方案 A
+
+输入 `ParsedContent`
+
+#### 方案 B
+
+输入 `CalendarEditorUiState`
+
+#### 方案 C
+
+拆成两个 use case：
+
+* `BuildInitialCalendarDraftUseCase`
+* `BuildCalendarInsertPayloadUseCase`
+
+AI 可自行选择，但必须说明原因。
+
+---
+
+## 9.2 UseCase 必须处理的规则
+
+### 规则 1：默认结束时间
+
+若有开始时间但无结束时间：
+
+* 默认结束时间 = 开始时间 + 1 小时
+
+### 规则 2：全天事件
+
+若文本更像“某天事项”而非具体时刻，可允许 `allDay = true`
+但本轮不要求自动判断非常复杂，允许仅靠用户手动切换。
+
+### 规则 3：无开始时间
+
+若无开始时间：
+
+* 不阻止进入系统日历
+* 但应提示用户补充
+* 或允许作为无时间草稿处理（按系统日历能力）
+
+---
+
+# 10. Calendar Intent 集成要求
+
+## 10.1 必须新增封装层
+
+建议定义接口：
+
+### CalendarIntentLauncher
+
+至少包含：
+
+* `launchInsertEvent(activity, draft)`
+* 或返回 `Intent` 再由 UI 层发起
+
+推荐更清晰的方案：
+
+* `CalendarIntentFactory` 负责构造 Intent
+* `CalendarIntentLauncher` 负责检查并启动
+
+---
+
+## 10.2 推荐方案
+
+建议分成三层：
+
+### A. CalendarIntentFactory
+
+职责：
+
+* 根据 `CalendarDraft` 构造标准新增事件 Intent
+
+### B. CalendarIntentLauncher
+
+职责：
+
+* 检查是否有 app 可处理
+* 负责 launch
+* 返回 success / failure
+
+### C. ViewModel
+
+职责：
+
+* 生成 draft
+* 发出 UI event，请求页面执行 launch
+
+这样职责最清晰。
+
+---
+
+## 10.3 Intent 构造要求
+
+必须基于标准 Android Calendar Insert Intent。
+
+应至少带入：
+
+* title
+* description
+* eventLocation
+* beginTime
+* endTime
+* allDay
+
+AI 必须使用真实存在、可运行的 Android API，不得伪造。
+
+---
+
+# 11. CalendarEditor 页面要求
+
+## 11.1 页面职责
+
+这个页面现在是日历事件的编辑确认页，不再只是占位。
+
+## 11.2 表单字段
+
+必须包含：
+
+1. 标题输入框
+2. 描述输入框
+3. 开始时间显示/编辑
+4. 结束时间显示/编辑
+5. 全天开关
+6. 地点输入框
+7. 按钮：加入系统日历
+
+---
+
+## 11.3 开始/结束时间编辑要求
+
+本轮接受以下任一方案：
+
+### 方案 A：真正的日期 + 时间选择器
+
+最佳。
+
+### 方案 B：先用简化 picker 或预设快捷按钮
+
+可接受。
+
+### 方案 C：文本按钮 + 对话框占位，但最终能设置真实时间
+
+也可接受。
+
+关键点：
+
+* 用户必须能改开始/结束时间
+* 不是只读展示
+
+---
+
+## 11.4 ViewModel 要求
+
+`CalendarEditorViewModel` 必须支持：
+
+* 接收导入预填内容
+* 管理表单状态
+* 切换 `allDay`
+* 更新开始/结束时间
+* 构建 `CalendarDraft`
+* 发出 UI event 请求打开系统日历
+
+---
+
+## 11.5 UI Event 要求
+
+建议使用：
+
+* `OpenSystemCalendar(draft)`
+* `ShowError(message)`
+* `NavigateBack`
+
+AI 可用任意合理事件机制，但必须清晰。
+
+---
+
+# 12. 系统日历不可用时的降级策略
+
+## 12.1 必须考虑
+
+不能假设所有设备都一定有可处理事件插入的日历应用。
+
+## 12.2 失败处理要求
+
+若 `resolveActivity` 失败或 launch 失败：
+
+* 页面给出错误提示
+* 不崩溃
+* 保留当前表单内容
+* 提供至少一种降级方案
+
+---
+
+## 12.3 推荐降级方案
+
+至少实现其中一种：
+
+### 方案 A
+
+提示用户“当前设备没有可用的日历应用”，并建议改为保存为提醒
+
+### 方案 B
+
+保留页面内容，让用户手动复制信息
+
+### 方案 C
+
+直接提供“改为提醒”按钮（若当前工程已有基础提醒编辑链路）
+
+推荐优先：
+**A + 保留页面状态**
+
+---
+
+# 13. Reminder 与 Calendar 的衔接要求
+
+## 13.1 从 ImportConfirm 到 CalendarEditor
+
+点击“作为日历事件继续”后：
+
+* 不应丢失解析内容
+* 不应只传一个标题
+* 至少传递完整可构建草稿所需字段
+
+## 13.2 从 CalendarEditor 的失败降级返回 Reminder
+
+若实现该能力：
+
+* 应能把 title / description / time 带回 ReminderEditor
+* 不是本轮强制，但可作为加分项
+
+---
+
+# 14. Manifest 要求
+
+## 14.1 本轮一般不强制新增权限
+
+如果使用 Intent 打开系统日历新增页，通常不需要 `READ_CALENDAR / WRITE_CALENDAR`。
+
+AI 必须说明这一点。
+
+## 14.2 Activity / exported
+
+如果本轮新增任何 Activity 或调整 intent 处理，必须正确处理 Android 12+ 的 `exported` 规则。
+
+---
+
+# 15. Gradle 要求
+
+本轮如需新增依赖，只允许在合理范围，例如：
+
+* 日期时间选择相关 Compose / AndroidX 支持
+* Kotlin datetime（若确实需要）
+
+原则：
+
+* 避免引入重型第三方日历库
+* 优先用 Android 标准能力和现有结构解决
+
+---
+
+# 16. 如何测试
+
+AI 必须提供明确手工测试步骤，至少包括：
+
+## 16.1 测试 1：导入到日历编辑页
+
+1. 从外部 app 分享一段带时间文本到本 app
+2. 在导入确认页点击“作为日历事件继续”
+3. 检查 CalendarEditor 是否预填：
+
+   * 标题
+   * 描述
+   * 地点
+   * 开始时间
+
+---
+
+## 16.2 测试 2：系统日历 Intent
+
+使用示例文本：
+
+### 示例 1
+
+`周三下午3点在工大北区开组会`
+
+预期：
+
+* 标题：组会
+* 开始时间：周三 15:00
+* 结束时间：默认 16:00
+* 地点：工大北区
+* 点击加入系统日历后，系统日历新增页被打开，字段已带入
+
+### 示例 2
+
+`4月2日14:00在行政楼205面试`
+
+预期：
+
+* 标题：面试
+* 开始时间：4月2日 14:00
+* 结束时间：15:00（默认）
+* 地点：行政楼205
+
+---
+
+## 16.3 测试 3：无明确时间
+
+示例：
+`下周找老师确认材料`
+
+预期：
+
+* 可进入 CalendarEditor
+* 时间可以为空或提示用户补充
+* 不崩溃
+* 用户仍可手动编辑后加入系统日历
+
+---
+
+## 16.4 测试 4：无系统日历 app
+
+在无法处理日历 Intent 的环境中：
+
+* 点击加入系统日历后不会崩溃
+* 有明确错误提示
+* 表单内容仍保留
+
+---
+
+# 17. 当前阶段限制说明
+
+AI 必须主动说明以下限制：
+
+1. 当前使用的是 Calendar Insert Intent，不是直接写入系统日历数据库
+2. 是否最终保存成功取决于用户在系统日历页面中的确认操作
+3. 不支持编辑已有事件
+4. 不支持复杂重复规则、参会人、会议链接
+5. 不支持读取用户现有日历冲突
+6. 不保证所有 ROM 的日历 app 对字段支持完全一致
+7. 无开始时间时，各系统日历 app 的行为可能不同
+
+---
+
+# 18. 下一步建议
+
+Milestone 4 完成后，推荐进入 **Milestone 5：剪贴板建议与轻量快捷入口**。
+
+下一步目标：
+
+1. 监听剪贴板变化
+2. 对高置信度文本给出“加入提醒 / 加入日历”建议
+3. 实现去重与冷却策略
+4. 在设置页增加相关开关
+5. 不打扰、可关闭、可解释
+
+如果你更想优先做微信等场景，也可以把下一轮改成：
+**辅助功能增强入口 PoC**
+
+---
+
+# 19. 可直接投喂 AI 的执行 Prompt
+
+下面这段可以直接复制给 AI：
+
+```text id="y2n7i8"
+You are implementing Milestone 4 for an Android app called Global Reminder Assistant.
+
+Goal:
+Implement calendar editing and system calendar insert integration.
+
+Tech stack requirements:
+- Kotlin
+- Jetpack Compose
+- MVVM
+- Hilt
+- Room
+- Navigation Compose
+- Coroutines
+- Material 3
+
+Milestone 3 already exists with:
+- app skeleton
+- import flow
+- parser
+- reminder creation
+- local reminder scheduling
+- notifications
+- home list management
+
+What must be built in this milestone:
+1. Upgrade CalendarEditorScreen from placeholder to real editable form
+2. CalendarEditorViewModel must accept imported parsed data
+3. Add BuildCalendarDraftUseCase
+4. Add CalendarIntentFactory
+5. Add CalendarIntentLauncher abstraction and implementation
+6. Support opening system calendar insert event screen
+7. Prefill:
+   - title
+   - description
+   - start time
+   - end time
+   - all day
+   - location
+8. If only start time exists, default end time to start + 1 hour
+9. If no clear time exists, allow manual editing and graceful fallback
+10. Handle no-calendar-app cases safely
+
+Constraints:
+- Do NOT implement Calendar Provider direct write
+- Do NOT require READ_CALENDAR / WRITE_CALENDAR permissions
+- Do NOT implement recurring rules UI
+- Do NOT implement attendee invites
+- Do NOT put intent creation logic directly in Composables
+- Keep system integration encapsulated
+- Keep code runnable and internally consistent
+
+Recommended architecture:
+- CalendarIntentFactory builds the insert intent
+- CalendarIntentLauncher checks availability and launches
+- ViewModel emits UI event to request launch
+
+Output format:
+1. Task understanding
+2. Design explanation
+3. Updated file tree
+4. Full code
+5. Gradle updates
+6. Manifest updates
+7. Manual test instructions
+8. Current limitations
+9. Recommended next step
+```
+
+---
+
+# 20. 更强约束版 Prompt
+
+```text id="c21ytl"
+Implement Milestone 4 only.
+
+Do not skip files.
+Do not use pseudo-code.
+Do not fake calendar integration.
+Do not directly write to calendar provider.
+Do not require unnecessary calendar permissions.
+Do not keep all intent logic inside UI.
+Do not assume every device has a calendar app.
+
+Use package name: com.example.reminderassistant
+
+The code must be runnable and internally consistent.
+
+The implementation must support:
+imported parsed data -> calendar editor -> build draft -> open system calendar insert event screen
+
+If any platform limitation exists, state it clearly.
+```
+
+---
+
+# 21. 你验收 AI 产出时重点检查什么
+
+## 21.1 CalendarEditor 是否真可编辑
+
+不是只展示文本，而是：
+
+* 标题能改
+* 描述能改
+* 地点能改
+* 时间能改
+* 全天能切换
+
+## 21.2 系统日历集成是否真存在
+
+检查：
+
+* 是否用了真实 Android Calendar Insert Intent
+* 是否不是伪代码
+* 是否处理了 `resolveActivity`
+
+## 21.3 预填是否完整
+
+从 ImportConfirm 进入 CalendarEditor 后：
+
+* 标题是否带入
+* 地点是否带入
+* 描述是否带入
+* 开始/结束时间是否合理
+
+## 21.4 降级是否安全
+
+在无可处理 app 时：
+
+* 是否不崩溃
+* 是否有清晰错误
+* 是否保留当前输入
+
+## 21.5 权限是否克制
+
+检查：
+
+* 是否没有无必要地加入 READ/WRITE_CALENDAR
+* 是否解释了为什么本轮不需要这些权限
+
+---
+
+# 22. 这轮完成后的理想结果
+
+Milestone 4 完成后，你应该得到一个：
+
+* 能把文本导入为日历草稿
+* 能编辑事件字段
+* 能打开系统日历新增页
+* 能安全处理失败情况
+
+的系统日历接入版本。
+
+到这一步，你的 app 就完成了两条核心价值链路：
+
+1. **进入提醒并到点通知**
+2. **进入系统日历并预填事件**
+
+
