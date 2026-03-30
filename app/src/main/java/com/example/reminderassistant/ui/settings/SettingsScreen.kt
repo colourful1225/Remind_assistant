@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -19,7 +18,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,9 +26,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.reminderassistant.R
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import com.example.reminderassistant.ui.accessibility.AccessibilityEducationScreen
+import com.example.reminderassistant.ui.accessibility.AccessibilityStatusCard
 import android.content.Intent
 import android.provider.Settings
-import com.example.reminderassistant.ui.accessibility.AccessibilityEducationScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,9 +42,16 @@ fun SettingsScreen(
 ) {
     val uiState = viewModel.uiState.collectAsState().value
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
 
-    LaunchedEffect(Unit) {
-        viewModel.refreshAccessibilityStatus()
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshAccessibilityStatus()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     Scaffold(
@@ -119,35 +129,16 @@ fun SettingsScreen(
                 }
             }
 
-            SettingSwitchItem(
-                label = stringResource(R.string.settings_accessibility),
-                isChecked = uiState.accessibilityServiceEnabled,
-                onCheckedChange = { viewModel.refreshAccessibilityStatus() }
-            )
-
             AccessibilityEducationScreen()
 
-            Text(
-                text = if (uiState.accessibilityServiceEnabled) {
-                    stringResource(R.string.settings_accessibility_enabled)
-                } else {
-                    stringResource(R.string.settings_accessibility_disabled)
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
-            Button(
-                onClick = {
+            AccessibilityStatusCard(
+                enabled = uiState.accessibilityServiceEnabled,
+                onOpenSettings = {
                     context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     })
-                },
-                modifier = Modifier.padding(bottom = 16.dp)
-            ) {
-                Text(stringResource(R.string.settings_accessibility_open))
-            }
+                }
+            )
 
             SettingSwitchItem(
                 label = stringResource(R.string.settings_show_source),

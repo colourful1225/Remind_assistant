@@ -44,10 +44,6 @@ class SettingsViewModel @Inject constructor(
         _uiState.value = current.copy(highConfidenceOnly = !current.highConfidenceOnly)
     }
 
-    fun toggleAccessibilityService() {
-        refreshAccessibilityStatus()
-    }
-
     fun toggleShowSourceApp() {
         val current = _uiState.value
         _uiState.value = current.copy(
