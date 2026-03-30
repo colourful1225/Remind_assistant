@@ -1,20 +1,5 @@
 package com.example.reminderassistant.domain.model
 
-// Enums
-enum class SourceType {
-    SHARE,
-    PROCESS_TEXT,
-    CLIPBOARD,
-    ACCESSIBILITY,
-    MANUAL
-}
-
-enum class ParsedType {
-    TODO,
-    EVENT,
-    UNKNOWN
-}
-
 enum class ReminderStatus {
     ACTIVE,
     COMPLETED,

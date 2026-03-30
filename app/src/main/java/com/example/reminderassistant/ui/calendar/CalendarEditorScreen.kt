@@ -23,6 +23,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.reminderassistant.R
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,6 +34,9 @@ fun CalendarEditorScreen(
     viewModel: CalendarEditorViewModel
 ) {
     val uiState = viewModel.uiState.collectAsState().value
+    val startTimeLabel = uiState.startTime?.let {
+        SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(it))
+    }
 
     Scaffold(
         topBar = {
@@ -85,7 +91,11 @@ fun CalendarEditorScreen(
             )
 
             Text(
-                text = "Start Time: (To be implemented)",
+                text = if (startTimeLabel == null) {
+                    "Start Time: (To be implemented)"
+                } else {
+                    "Start Time: $startTimeLabel"
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier

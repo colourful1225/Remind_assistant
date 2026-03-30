@@ -26,6 +26,32 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".system.share.ShareReceiverActivity"
+            android:exported="true"
+            android:theme="@style/Theme.ReminderAssistant">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".system.share.ProcessTextActivity"
+            android:exported="true"
+            android:permission="android.permission.PROCESS_TEXT"
+            android:theme="@style/Theme.ReminderAssistant">
+            <intent-filter>
+                <action android:name="android.intent.action.PROCESS_TEXT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+            <meta-data
+                android:name="android.intent.extra.PROCESS_TEXT_READONLY"
+                android:value="true" />
+        </activity>
+
     </application>
 
 </manifest>

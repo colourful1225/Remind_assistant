@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.reminderassistant.domain.model.ReminderItem
 import com.example.reminderassistant.domain.usecase.CreateReminderUseCase
+import com.example.reminderassistant.system.share.ImportSessionStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,11 +14,22 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ReminderEditorViewModel @Inject constructor(
-    private val createReminderUseCase: CreateReminderUseCase
+    private val createReminderUseCase: CreateReminderUseCase,
+    private val importSessionStore: ImportSessionStore
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ReminderEditorUiState())
     val uiState: StateFlow<ReminderEditorUiState> = _uiState.asStateFlow()
+
+    init {
+        val session = importSessionStore.session.value
+        if (session != null && _uiState.value.title.isBlank()) {
+            _uiState.value = _uiState.value.copy(
+                title = session.parseResult.suggestedTitle,
+                note = session.parseResult.rawText
+            )
+        }
+    }
 
     fun updateTitle(title: String) {
         _uiState.value = _uiState.value.copy(title = title)
@@ -36,6 +48,7 @@ class ReminderEditorViewModel @Inject constructor(
                     note = currentState.note
                 )
                 createReminderUseCase(reminderItem)
+                importSessionStore.clear()
                 onComplete()
             }
         }

@@ -1,6 +1,8 @@
 package com.example.reminderassistant.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -10,12 +12,29 @@ import com.example.reminderassistant.ui.importflow.ImportConfirmScreen
 import com.example.reminderassistant.ui.reminder.ReminderEditorScreen
 import com.example.reminderassistant.ui.calendar.CalendarEditorScreen
 import com.example.reminderassistant.ui.settings.SettingsScreen
+import com.example.reminderassistant.system.share.ImportSessionStore
 
 /**
  * Navigation graph for the app
  */
 @Composable
-fun AppNavGraph(navController: NavHostController) {
+fun AppNavGraph(
+    navController: NavHostController,
+    importSessionStore: ImportSessionStore
+) {
+    val importSession = importSessionStore.session.collectAsState().value
+
+    LaunchedEffect(importSession) {
+        if (importSession != null) {
+            val currentRoute = navController.currentBackStackEntry?.destination?.route
+            if (currentRoute != Routes.IMPORT_CONFIRM) {
+                navController.navigate(Routes.IMPORT_CONFIRM) {
+                    launchSingleTop = true
+                }
+            }
+        }
+    }
+
     NavHost(
         navController = navController,
         startDestination = Routes.HOME
@@ -42,6 +61,12 @@ fun AppNavGraph(navController: NavHostController) {
             ImportConfirmScreen(
                 onBack = {
                     navController.popBackStack()
+                },
+                onContinueToReminder = {
+                    navController.navigate(Routes.REMINDER_EDITOR)
+                },
+                onContinueToCalendar = {
+                    navController.navigate(Routes.CALENDAR_EDITOR)
                 },
                 viewModel = hiltViewModel()
             )
