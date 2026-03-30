@@ -36,6 +36,12 @@
     <string name="event_end_time">End Time</string>
     <string name="event_location">Location</string>
     <string name="event_description">Description</string>
+    <string name="calendar_all_day">All Day</string>
+    <string name="calendar_start_hint">Select start date and time</string>
+    <string name="calendar_end_hint">Select end date and time</string>
+    <string name="calendar_add_to_system">Add to System Calendar</string>
+    <string name="calendar_no_app">No calendar app found. You can return to reminder mode.</string>
+    <string name="calendar_fallback_reminder">Switch to Reminder</string>
     <string name="status_active">ACTIVE</string>
     <string name="status_completed">COMPLETED</string>
     <string name="status_cancelled">CANCELLED</string>

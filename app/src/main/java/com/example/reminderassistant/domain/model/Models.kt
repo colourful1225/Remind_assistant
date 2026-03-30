@@ -27,20 +27,6 @@ data class ReminderItem(
 )
 
 /**
- * 表示一个待创建的日历事件草稿
- */
-data class CalendarDraft(
-    val title: String,
-    val description: String = "",
-    val startTime: Long? = null,
-    val endTime: Long? = null,
-    val allDay: Boolean = false,
-    val location: String? = null,
-    val recurrenceRule: String? = null,
-    val reminderOffsetMinutes: Int? = null
-)
-
-/**
  * 表示文本解析结果
  */
 data class ParsedContent(

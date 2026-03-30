@@ -25,12 +25,10 @@ fun AppNavGraph(
     val importSession = importSessionStore.session.collectAsState().value
 
     LaunchedEffect(importSession) {
-        if (importSession != null) {
-            val currentRoute = navController.currentBackStackEntry?.destination?.route
-            if (currentRoute != Routes.IMPORT_CONFIRM) {
-                navController.navigate(Routes.IMPORT_CONFIRM) {
-                    launchSingleTop = true
-                }
+        val currentRoute = navController.currentBackStackEntry?.destination?.route
+        if (importSession != null && currentRoute != Routes.IMPORT_CONFIRM) {
+            navController.navigate(Routes.IMPORT_CONFIRM) {
+                launchSingleTop = true
             }
         }
     }
@@ -85,6 +83,9 @@ fun AppNavGraph(
             CalendarEditorScreen(
                 onBack = {
                     navController.popBackStack()
+                },
+                onFallbackToReminder = {
+                    navController.navigate(Routes.REMINDER_EDITOR)
                 },
                 viewModel = hiltViewModel()
             )
