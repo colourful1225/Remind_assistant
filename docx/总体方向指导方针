@@ -1,0 +1,2077 @@
+下面是一份可直接用于指导 AI 进行开发的**完整开发文档**。它面向 **Android 应用开发**，目标是让 AI 能按文档逐步生成工程、模块、页面、权限、数据结构和功能实现。
+
+你可以把这份文档保存为：
+
+**`Global_Reminder_Assistant_AI_Development_Spec_v1.md`**
+
+---
+
+# Global Reminder Assistant - AI Development Spec v1
+
+## 0. 项目总述
+
+### 0.1 项目名称
+
+**Global Reminder Assistant**
+中文可命名为：**全局提醒助手**
+
+### 0.2 项目定位
+
+本项目是一个 Android 应用，目标是在用户浏览任意文本信息时，帮助用户以极低操作成本，将文本快速转化为：
+
+1. **备忘录/待办提醒**
+2. **日历事件**
+
+应用应尽量减少用户手动输入，自动从文本中抽取：
+
+* 标题
+* 日期
+* 时间
+* 地点
+* 来源信息
+* 原文备注
+
+并将其带入编辑页面供用户确认和补充。
+
+### 0.3 核心价值
+
+用户在日常使用中经常遇到如下信息：
+
+* 快递通知
+* 课程通知
+* 会议安排
+* 截止时间
+* 任务提醒
+* 聊天中的约定
+* 微信里临时提到的事情
+* 短信中的取件、缴费、办理事项
+
+现有应用中，这些信息分散在不同 app 中，提醒入口也不统一。
+本项目希望提供一个统一的系统级“导入提醒/导入日历”的能力，使用户从任何文本信息出发，都可以快速建立提醒。
+
+### 0.4 一期目标
+
+第一阶段只实现**不依赖 root、不依赖 ROM 魔改、不依赖 Xposed/Hook** 的标准 Android 方案，优先支持：
+
+* 通过分享文本进入 app
+* 通过系统文本处理/选中文本进入 app
+* 在 app 内生成待办提醒
+* 调起系统日历新增事件页
+* 智能解析文本中的时间、地点、标题
+
+### 0.5 后续目标
+
+后续版本再逐步增强：
+
+* 剪贴板建议提醒
+* 辅助功能识别微信等 app 的长按场景
+* 悬浮快捷入口
+* 更复杂的时间语义解析
+* 日历 Provider 直写
+* 厂商备忘录对接
+* OCR / 截图识别
+
+---
+
+# 1. 产品目标与边界
+
+## 1.1 产品目标
+
+本项目必须实现以下核心目标：
+
+### G1. 快速创建提醒
+
+用户从其他 app 选中文本或分享文本到本 app 后，可以在 3 步以内创建提醒。
+
+### G2. 快速创建日历事件
+
+用户从其他 app 导入文本后，若文本中存在日期/时间信息，应用应优先引导用户生成日历事件。
+
+### G3. 自动填充优先
+
+应用应自动解析文本并生成建议内容，减少用户手动录入。
+
+### G4. 保持轻量与可解释
+
+用户应始终能看到原文、识别结果、提醒时间建议，并可手动修改。
+
+### G5. 本地优先
+
+一期默认所有解析逻辑在本地完成，不依赖云端服务。
+
+---
+
+## 1.2 非目标
+
+以下内容不属于 v1 必做范围：
+
+### NG1. 不做 root / 系统 hook
+
+不依赖 root、Xposed、LSPosed、Magisk、Hook 方案。
+
+### NG2. 不尝试往所有第三方 app 原生长按菜单中“直接插入”菜单项
+
+普通 Android app 不保证可以对其他 app 的上下文菜单进行原生注入。v1 不以此为目标。
+
+### NG3. 不做云同步系统
+
+v1 不做自建账号体系、远程同步、多人协作。
+
+### NG4. 不做第三方待办平台集成
+
+如 Notion、Todoist、滴答清单等均非 v1 必做。
+
+### NG5. 不做 OCR 识别
+
+图片转文字不在 v1 主链路中。
+
+### NG6. 不做自动静默创建日历事件
+
+v1 默认以“打开编辑页确认”为主，不追求后台无确认创建。
+
+---
+
+# 2. 用户角色与典型使用场景
+
+## 2.1 用户角色
+
+主要用户为 Android 手机普通用户，典型特征：
+
+* 高频使用微信、短信、浏览器、学校/工作类 app
+* 经常从消息中获得任务或时间信息
+* 不希望来回复制粘贴到备忘录或日历
+* 偏好快速、统一、轻量的提醒方式
+
+---
+
+## 2.2 场景 A：选中文本 -> 加入备忘录
+
+### 用户故事
+
+用户在短信、浏览器、邮件、文档中选中一段文本，希望快速将其加入待办并设置提醒。
+
+### 示例输入
+
+* “明天下午 5 点前去北区取韵达快递，取件码 6327”
+* “下周一前交实验报告”
+* “记得联系辅导员确认材料”
+
+### 预期流程
+
+1. 用户长按选中文字
+2. 在系统操作中选择“发送到提醒助手”或等效入口
+3. app 接收文本
+4. app 解析文本
+5. 打开待办编辑页
+6. 自动填入标题、备注、建议提醒时间
+7. 用户确认保存
+
+### 成功标准
+
+* 标题自动生成
+* 原文自动保留
+* 如果识别到时间则自动建议 reminder 时间
+
+---
+
+## 2.3 场景 B：选中文本 -> 加入日历
+
+### 用户故事
+
+用户在聊天、通知、网页、短信中看到一段带明确时间的信息，希望快速加入日历。
+
+### 示例输入
+
+* “周三下午 3 点在工大北区开组会”
+* “4 月 2 日 14:00 面试，地点：行政楼 205”
+* “明天晚上 7 点到 8 点开线上会议”
+
+### 预期流程
+
+1. 用户分享/处理文本到本 app
+2. app 识别为“更像日历事件”
+3. 打开日历事件编辑页
+4. 自动带入标题、开始/结束时间、地点、原文描述
+5. 用户点确认
+6. app 调起系统日历新增事件页或创建 event
+
+### 成功标准
+
+* 时间识别准确
+* 日历页面已自动带入关键字段
+* 用户只需确认或微调
+
+---
+
+## 2.4 场景 C：复制文本后触发建议
+
+### 用户故事
+
+用户在微信或其他 app 中复制了一段可能包含任务或时间的文本，系统自动建议“加入提醒”或“加入日历”。
+
+### 示例输入
+
+* “今天 17:30 去拿快递”
+* “明天 9 点答辩”
+* “周五前把表格交给老师”
+
+### 预期流程
+
+1. 用户复制文本
+2. app 监听剪贴板变化
+3. app 判断文本是否具有提醒价值
+4. 若具有，则显示轻量建议卡片
+5. 用户点击后进入待办或日历编辑页
+
+### 成功标准
+
+* 建议出现不频繁、不打扰
+* 仅在高置信度文本上出现
+* 用户可关闭此能力
+
+---
+
+## 2.5 场景 D：辅助功能增强入口（后续版本）
+
+### 用户故事
+
+用户在微信中长按某条消息，希望快速进入系统提醒，而不是微信内部提醒。
+
+### 预期流程
+
+1. 用户长按消息
+2. 微信弹出自带菜单
+3. 辅助功能服务识别到长按候选场景
+4. 在菜单旁或屏幕边缘出现“提醒”悬浮入口
+5. 点击后 app 获取文本并进入统一导入流程
+
+### 成功标准
+
+* 不要求真的插入微信原生菜单
+* 只要求提供等价的快速入口体验
+
+---
+
+# 3. 产品范围与功能清单
+
+## 3.1 MVP 功能范围
+
+### F1. 接收外部分享文本
+
+支持其他 app 通过标准 Android 分享机制将纯文本发送到本 app。
+
+### F2. 接收外部处理文本
+
+支持 ACTION_PROCESS_TEXT 或等效选中文本入口。
+
+### F3. 文本解析引擎
+
+根据输入文本自动解析：
+
+* 标题
+* 时间
+* 时间区间
+* 地点
+* 类型（待办 / 日历）
+
+### F4. 待办/提醒编辑页
+
+支持用户查看和修改：
+
+* 标题
+* 备注
+* 提醒时间
+* 来源信息
+
+### F5. 本地待办存储
+
+将提醒项存储到本地数据库，支持列表展示与后续通知提醒。
+
+### F6. 本地通知提醒
+
+在 reminder 时间到达时发送通知。
+
+### F7. 日历草稿编辑页
+
+将解析出的时间、地点等信息填充为日历草稿。
+
+### F8. 调起系统日历新增事件页
+
+支持通过 Intent 打开系统日历应用的新增事件页面，并预填信息。
+
+### F9. 设置页
+
+允许用户：
+
+* 开关剪贴板建议
+* 调整默认提醒策略
+* 查看权限状态
+
+---
+
+## 3.2 V1.5 功能
+
+### F10. 剪贴板建议
+
+监听复制文本，在适合的场景下显示建议弹窗。
+
+### F11. 专项模板
+
+支持以下场景的标题/动作优化：
+
+* 快递通知
+* 会议通知
+* 课程/作业提醒
+
+---
+
+## 3.3 V2 功能
+
+### F12. 辅助功能服务
+
+检测指定 app 中的长按候选场景，提供悬浮提醒入口。
+
+### F13. 悬浮快捷入口
+
+显示轻量浮钮或边缘卡片，用于快速发起提醒创建。
+
+### F14. 更复杂的语义时间解析
+
+支持诸如：
+
+* “后天下午”
+* “下周三上午”
+* “月底前”
+* “两小时后”
+
+---
+
+## 3.4 长期规划
+
+### F15. Calendar Provider 直写
+
+直接写入系统日历数据库。
+
+### F16. OCR 与截图解析
+
+对图片中信息进行文字提取与提醒生成。
+
+### F17. 厂商备忘录集成
+
+尝试与 MIUI / ColorOS / OneUI 等系统备忘录进行适配。
+
+---
+
+# 4. 非功能要求
+
+## 4.1 性能要求
+
+### NFR1. 导入响应速度
+
+从接收到文本到进入编辑页的时间应尽量小于 **500ms**。
+
+### NFR2. 解析速度
+
+文本解析应尽量在 **200ms** 内完成，对较长文本不超过 **800ms**。
+
+### NFR3. 启动速度
+
+冷启动进入首页应尽量小于 **1.5 秒**。
+
+---
+
+## 4.2 稳定性要求
+
+### NFR4. 崩溃率控制
+
+涉及分享接入、通知提醒、数据库读写、页面导航的路径必须稳定。
+
+### NFR5. 异常容错
+
+即使解析失败，也不能阻塞用户创建提醒。
+
+---
+
+## 4.3 打扰控制
+
+### NFR6. 剪贴板建议不得频繁弹出
+
+同一段文本不应重复建议；短时间内不应连续弹出多次。
+
+### NFR7. 默认保守
+
+只有高置信度文本才触发主动建议。
+
+---
+
+## 4.4 电量与后台要求
+
+### NFR8. 背景监听尽量轻量
+
+v1 中只做必要的提醒调度和可选剪贴板监听；辅助功能服务默认关闭。
+
+### NFR9. 避免滥用后台能力
+
+除提醒调度外，不做长期驻留进程设计。
+
+---
+
+## 4.5 可维护性要求
+
+### NFR10. 代码结构清晰
+
+必须采用清晰分层架构，避免 UI 与业务逻辑耦合。
+
+### NFR11. 易测试
+
+核心解析、数据存储、提醒调度逻辑必须可单元测试。
+
+---
+
+# 5. 权限与系统能力设计
+
+## 5.1 v1 必需权限
+
+### P1. POST_NOTIFICATIONS
+
+用于发送提醒通知。
+
+### P2. RECEIVE_BOOT_COMPLETED
+
+若需要在开机后恢复提醒调度。
+
+---
+
+## 5.2 可选权限
+
+### P3. READ_CALENDAR / WRITE_CALENDAR
+
+仅在需要直接写入系统日历 Provider 时使用。
+v1 默认优先通过系统日历 Intent，不强依赖此权限。
+
+### P4. SCHEDULE_EXACT_ALARM
+
+若提醒要求高精度触发，可评估使用。需考虑 Android 版本限制。
+
+### P5. SYSTEM_ALERT_WINDOW
+
+仅用于后续悬浮入口功能。
+
+### P6. BIND_ACCESSIBILITY_SERVICE
+
+仅用于后续辅助功能增强模块。
+
+---
+
+## 5.3 v1 使用的系统能力
+
+### C1. Android Sharesheet / ACTION_SEND
+
+接收来自其他 app 的文本分享。
+
+### C2. ACTION_PROCESS_TEXT
+
+支持系统选中文本后的处理入口。
+
+### C3. AlarmManager / WorkManager
+
+用于本地提醒调度。
+
+### C4. NotificationManager
+
+用于本地通知提醒。
+
+### C5. Calendar Intent
+
+用于打开系统日历新增事件页。
+
+---
+
+## 5.4 权限申请策略
+
+### 策略原则
+
+* 一期默认尽量少权限
+* 只有在用户真正触发相关功能时再申请权限
+* 每个权限必须有清晰解释文案
+* 若权限未授予，功能必须优雅降级
+
+### 具体策略
+
+* 首次安装不立刻请求通知权限，等用户首次保存提醒时请求
+* 日历权限不在 v1 主流程中强求
+* 剪贴板、悬浮窗、辅助功能等能力必须用户主动开启
+
+---
+
+# 6. 技术架构
+
+## 6.1 技术栈
+
+### 编程语言
+
+* Kotlin
+
+### UI
+
+* Jetpack Compose
+
+### 架构模式
+
+* MVVM
+* 分层架构（Presentation / Domain / Data / System Integration）
+
+### 依赖注入
+
+* Hilt
+
+### 本地存储
+
+* Room
+
+### 异步处理
+
+* Kotlin Coroutines
+
+### 提醒调度
+
+* AlarmManager 为主，必要时结合 BroadcastReceiver
+
+### 导航
+
+* Navigation Compose
+
+---
+
+## 6.2 架构分层
+
+### Presentation Layer
+
+职责：
+
+* 页面渲染
+* 状态展示
+* 用户交互响应
+* 导航控制
+
+组成：
+
+* Activity
+* Compose Screen
+* ViewModel
+* UI State
+
+### Domain Layer
+
+职责：
+
+* 业务规则
+* 文本解析逻辑
+* 创建提醒用例
+* 构建日历草稿用例
+* 调度提醒用例
+
+组成：
+
+* UseCase
+* Domain Model
+* Repository Interface
+* Parser Abstraction
+
+### Data Layer
+
+职责：
+
+* 本地数据库
+* Repository 实现
+* Entity 与 Domain Model 转换
+* 配置持久化
+
+组成：
+
+* Room Database
+* DAO
+* RepositoryImpl
+* Mapper
+
+### System Integration Layer
+
+职责：
+
+* 分享接收
+* 系统日历 Intent
+* 通知调度
+* 剪贴板监听
+* 辅助功能
+* 悬浮窗
+
+组成：
+
+* Receiver / Service / Gateway
+* System wrapper interfaces
+
+---
+
+## 6.3 设计原则
+
+### 原则 1
+
+业务逻辑不得写在 Composable 中。
+
+### 原则 2
+
+所有系统能力必须通过 gateway/interface 封装。
+
+### 原则 3
+
+解析逻辑独立于 UI 和数据库。
+
+### 原则 4
+
+页面只关心 ViewModel 状态，不直接操作底层系统 API。
+
+### 原则 5
+
+所有模块应支持增量扩展，便于后续加入辅助功能与 OCR。
+
+---
+
+# 7. 模块设计
+
+## 7.1 Share Intake Module
+
+### 职责
+
+接收来自其他 app 的文本分享与文本处理动作。
+
+### 输入
+
+* ACTION_SEND 文本
+* ACTION_PROCESS_TEXT 文本
+
+### 输出
+
+* `ImportRequest`
+* 导航至导入确认页
+
+### 不负责
+
+* 不负责最终存储
+* 不负责解析策略定义
+
+---
+
+## 7.2 Parsing Engine Module
+
+### 职责
+
+对输入文本进行清洗、分类、提取与标题生成。
+
+### 输入
+
+* 原始文本
+* 来源信息
+* 当前时间
+
+### 输出
+
+* `ParsedContent`
+* `ParseResult`
+
+### 细分子模块
+
+* TextCleaner
+* TimeParser
+* LocationParser
+* TitleGenerator
+* ContentClassifier
+
+### 不负责
+
+* 不负责 UI
+* 不负责数据库
+
+---
+
+## 7.3 Reminder Module
+
+### 职责
+
+负责提醒项的创建、编辑、持久化、状态更新和提醒时间设置。
+
+### 输入
+
+* `ParsedContent`
+* 用户修正后的编辑结果
+
+### 输出
+
+* `ReminderItem`
+* 本地存储结果
+* 调度结果
+
+---
+
+## 7.4 Calendar Module
+
+### 职责
+
+负责将解析结果映射为日历草稿，并调用系统日历。
+
+### 输入
+
+* `ParsedContent`
+* 用户修正后的事件信息
+
+### 输出
+
+* `CalendarDraft`
+* Calendar Intent 调起结果
+
+---
+
+## 7.5 Reminder Scheduling Module
+
+### 职责
+
+负责提醒的注册、取消、更新和到时通知。
+
+### 输入
+
+* Reminder ID
+* Reminder Time
+
+### 输出
+
+* Alarm/Notification
+
+### 不负责
+
+* 不负责提醒项编辑逻辑
+* 不负责文本解析
+
+---
+
+## 7.6 Clipboard Suggestion Module
+
+### 职责
+
+监测剪贴板变化，并在满足条件时给出建议。
+
+### 输入
+
+* 复制文本
+* 用户设置
+
+### 输出
+
+* 建议 UI 触发信号
+
+### 限制
+
+* 默认关闭
+* 必须可在设置中关闭
+* 需要防抖和去重
+
+---
+
+## 7.7 Accessibility Assist Module（后续）
+
+### 职责
+
+在指定 app 的长按候选场景下显示快捷入口。
+
+### 输入
+
+* AccessibilityEvent
+* 当前窗口节点树
+
+### 输出
+
+* 候选文本
+* 快捷入口显示状态
+
+### 限制
+
+* 不保证适配所有 app
+* 需要逐 app 规则
+
+---
+
+## 7.8 Settings Module
+
+### 职责
+
+管理用户偏好与功能开关。
+
+### 配置项建议
+
+* 默认提醒时间策略
+* 是否开启剪贴板建议
+* 是否开启辅助功能增强
+* 是否显示来源 app
+* 建议提示频率
+
+---
+
+# 8. 数据模型设计
+
+## 8.1 Domain Models
+
+### ReminderItem
+
+表示一个待办/提醒项。
+
+字段：
+
+* `id: Long`
+* `title: String`
+* `note: String`
+* `reminderTime: Long?`
+* `createdAt: Long`
+* `updatedAt: Long`
+* `sourceType: SourceType`
+* `sourceAppPackage: String?`
+* `sourceAppName: String?`
+* `rawText: String`
+* `status: ReminderStatus`
+* `tags: List<String>`
+
+---
+
+### CalendarDraft
+
+表示一个待创建的日历事件草稿。
+
+字段：
+
+* `title: String`
+* `description: String`
+* `startTime: Long?`
+* `endTime: Long?`
+* `allDay: Boolean`
+* `location: String?`
+* `recurrenceRule: String?`
+* `reminderOffsetMinutes: Int?`
+
+---
+
+### ParsedContent
+
+表示文本解析结果。
+
+字段：
+
+* `rawText: String`
+* `cleanedText: String`
+* `suggestedTitle: String`
+* `detectedType: ParsedType`
+* `detectedTime: Long?`
+* `detectedEndTime: Long?`
+* `detectedLocation: String?`
+* `confidenceScore: Float`
+* `matchedKeywords: List<String>`
+
+---
+
+### SourceContext
+
+表示文本来源上下文。
+
+字段：
+
+* `sourceType: SourceType`
+* `sourceAppPackage: String?`
+* `sourceAppName: String?`
+* `receivedAt: Long`
+
+---
+
+### ImportRequest
+
+表示外部导入请求。
+
+字段：
+
+* `text: String`
+* `sourceContext: SourceContext`
+
+---
+
+## 8.2 枚举类型
+
+### SourceType
+
+* `SHARE`
+* `PROCESS_TEXT`
+* `CLIPBOARD`
+* `ACCESSIBILITY`
+* `MANUAL`
+
+### ParsedType
+
+* `TODO`
+* `EVENT`
+* `UNKNOWN`
+
+### ReminderStatus
+
+* `ACTIVE`
+* `COMPLETED`
+* `CANCELLED`
+
+---
+
+## 8.3 数据库存储模型
+
+### ReminderEntity
+
+Room 实体，用于本地持久化。
+
+建议字段：
+
+* `id`
+* `title`
+* `note`
+* `reminderTime`
+* `createdAt`
+* `updatedAt`
+* `sourceType`
+* `sourceAppPackage`
+* `sourceAppName`
+* `rawText`
+* `status`
+* `tagsSerialized`
+
+---
+
+## 8.4 Mapper 设计
+
+必须提供：
+
+* `ReminderEntity <-> ReminderItem`
+* `ParsedContent -> ReminderItem Draft`
+* `ParsedContent -> CalendarDraft`
+
+---
+
+# 9. 文本解析设计
+
+## 9.1 解析目标
+
+应用应从输入文本中尽可能抽取以下结构化信息：
+
+* 任务标题
+* 时间点
+* 时间区间
+* 地点
+* 类型（待办 / 日历）
+* 快递/会议/课程等特征
+* 原文重要关键词
+
+---
+
+## 9.2 解析流程
+
+### Step 1. 文本清洗
+
+* 去除多余空格
+* 规范换行
+* 统一标点
+* 保留原始文本作为备注来源
+
+### Step 2. 时间识别
+
+识别形式包括但不限于：
+
+* 今天 / 明天 / 后天
+* 周一 / 周三下午
+* 4 月 2 日
+* 14:00 / 下午 3 点
+* 17:30
+* 下周一前
+* 今晚 8 点
+* 本周五
+
+### Step 3. 地点识别
+
+识别常见地点模式：
+
+* “在 XXX”
+* “地点：XXX”
+* “于 XXX”
+* “到 XXX”
+* 教学楼、校区、会议室、办公室等关键词
+
+### Step 4. 类型判断
+
+根据语义和时间特征判断：
+
+* 有明确开始时间，更像 EVENT
+* 无明确开始时间但有截止语义，更像 TODO
+* 无明显时间但含“记得/去/拿/交/提交/办理”，更像 TODO
+
+### Step 5. 标题生成
+
+从文本中提炼最短可理解标题。
+
+---
+
+## 9.3 标题生成规则
+
+### 规则优先级
+
+#### A. 快递类
+
+关键词：
+
+* 快递
+* 取件
+* 包裹
+* 驿站
+* 韵达 / 中通 / 圆通 / 京东 / 顺丰
+
+标题建议：
+
+* 取快递
+* 取韵达快递
+* 领取包裹
+
+#### B. 会议/课程类
+
+关键词：
+
+* 开会
+* 组会
+* 会议
+* 面试
+* 答辩
+* 上课
+
+标题建议：
+
+* 组会
+* 面试
+* 答辩
+* 上课
+
+#### C. 提交/办理类
+
+关键词：
+
+* 交
+* 提交
+* 缴费
+* 办理
+* 确认
+* 领取
+
+标题建议：
+
+* 提交材料
+* 办理事项
+* 确认材料
+* 缴费
+
+#### D. 默认标题
+
+若无法判断，则截取前 8~16 个有意义字符作为标题建议。
+
+---
+
+## 9.4 时间解析策略
+
+### 优先目标
+
+一期不追求极致自然语言理解，而追求：
+
+* 常见中文时间表达可用
+* 行为可预测
+* 出错时可降级
+
+### 示例
+
+输入：
+“明天下午 5 点前去北区取韵达快递，取件码 6327”
+
+解析建议：
+
+* 类型：TODO
+* 时间：明天 17:00
+* 标题：取韵达快递
+* 地点：北区
+* 备注：原文全文
+
+输入：
+“周三下午 3 点在工大北区开组会”
+
+解析建议：
+
+* 类型：EVENT
+* 开始时间：本周三 15:00
+* 结束时间：默认 +1 小时
+* 标题：组会
+* 地点：工大北区
+
+---
+
+## 9.5 置信度评分
+
+解析结果应包含 `confidenceScore`，用于决定：
+
+* 是否自动建议创建
+* 默认进入待办还是日历
+
+建议分级：
+
+* `>= 0.8`：高置信度
+* `0.5 ~ 0.79`：中置信度
+* `< 0.5`：低置信度，走保守策略
+
+---
+
+# 10. 事件流与时序设计
+
+## 10.1 分享文本 -> 提醒
+
+时序：
+
+1. 外部 app 发起分享文本
+2. `ShareReceiverActivity` 接收 Intent
+3. 生成 `ImportRequest`
+4. 调用 `ParseIncomingTextUseCase`
+5. 得到 `ParsedContent`
+6. 打开 `ReminderEditorScreen`
+7. 用户修改并保存
+8. `CreateReminderUseCase`
+9. `ReminderRepository.save()`
+10. `ScheduleReminderUseCase`
+
+---
+
+## 10.2 分享文本 -> 日历
+
+时序：
+
+1. 外部 app 发起分享文本
+2. app 解析内容
+3. 若识别为 EVENT，则进入 `CalendarEditorScreen`
+4. 用户确认
+5. `BuildCalendarDraftUseCase`
+6. `CalendarIntentLauncher.launchInsertEvent()`
+
+---
+
+## 10.3 剪贴板建议
+
+时序：
+
+1. 剪贴板变化
+2. `ClipboardMonitor` 获取文本
+3. `DetectClipboardSuggestionUseCase`
+4. 若高置信度则发出建议 UI 事件
+5. 用户点击
+6. 进入导入确认页/编辑页
+
+---
+
+## 10.4 提醒触发
+
+时序：
+
+1. 用户保存提醒
+2. `ScheduleReminderUseCase` 注册 Alarm
+3. 到时间触发 `ReminderNotificationReceiver`
+4. `NotificationHelper` 发送通知
+5. 用户可点通知进入详情
+
+---
+
+## 10.5 辅助功能快捷入口（后续）
+
+时序：
+
+1. 用户长按消息
+2. `AccessibilityService` 收到窗口事件
+3. `WindowEventAnalyzer` 判断是否为候选场景
+4. 读取邻近文本节点
+5. 浮层展示快捷入口
+6. 用户点击后进入导入流程
+
+---
+
+# 11. UI / UX 规范
+
+## 11.1 设计原则
+
+### U1. 少一步操作
+
+尽量自动填充，让用户只做确认。
+
+### U2. 原文可见
+
+任何自动解析都必须允许用户查看原始文本。
+
+### U3. 轻量、不打扰
+
+建议卡片和提醒浮层都应轻量、可关闭。
+
+### U4. 流程统一
+
+无论从分享、选中文本、剪贴板还是后续辅助功能进入，都应尽量进入同一套导入确认与编辑流程。
+
+---
+
+## 11.2 页面列表
+
+### Page 1. 首页
+
+用途：
+
+* 展示提醒列表
+* 展示状态筛选
+* 提供手动新建入口
+
+### Page 2. 导入确认页
+
+用途：
+
+* 展示原文
+* 展示解析结果
+* 允许用户选择创建待办还是日历事件
+
+### Page 3. 待办编辑页
+
+字段：
+
+* 标题
+* 备注
+* 提醒时间
+* 分类（可选）
+* 来源信息（只读）
+
+### Page 4. 日历编辑页
+
+字段：
+
+* 标题
+* 开始时间
+* 结束时间
+* 全天
+* 地点
+* 描述
+
+### Page 5. 设置页
+
+内容：
+
+* 通知权限状态
+* 剪贴板建议开关
+* 默认提醒策略
+* 后续增强功能入口
+
+### Page 6. 权限引导页（可选）
+
+用于解释：
+
+* 通知权限
+* 辅助功能
+* 悬浮窗
+
+---
+
+## 11.3 默认行为规则
+
+### 规则 1
+
+若检测到明确开始时间且语义像会议/约定，默认推荐进入日历模式。
+
+### 规则 2
+
+若只有截止/提醒语义，没有明确事件开始时间，默认推荐进入待办模式。
+
+### 规则 3
+
+若无法判断，默认进入待办模式。
+
+### 规则 4
+
+日历事件默认结束时间 = 开始时间 + 1 小时（可改）。
+
+### 规则 5
+
+待办若有时间则给出快捷 chips：
+
+* 到点提醒
+* 提前 30 分钟
+* 今晚 20:00
+* 明早 09:00
+
+---
+
+## 11.4 文案规范
+
+文案风格要求：
+
+* 短
+* 明确
+* 中性
+* 系统感强
+* 不营销化
+
+示例：
+
+* “识别到时间：周三 15:00”
+* “建议加入日历”
+* “原文已保留到备注”
+* “未识别到明确时间，你仍可手动设置提醒”
+
+---
+
+# 12. 平台与兼容性策略
+
+## 12.1 最低平台
+
+建议：
+
+* `minSdkVersion = 26`
+* `targetSdkVersion = 最新稳定版`
+
+说明：
+
+* 26+ 可覆盖大多数现代 Android 设备，并减少旧版兼容负担。
+
+---
+
+## 12.2 Android 版本差异
+
+### Android 13+
+
+需要显式通知权限。
+
+### Android 12+
+
+前台服务、精确闹钟相关限制更严格。
+
+### Android 10+
+
+剪贴板访问行为更受限制，需要谨慎处理前后台场景。
+
+---
+
+## 12.3 ROM 兼容性
+
+需要考虑：
+
+* 小米 MIUI / HyperOS
+* OPPO / ColorOS
+* vivo / OriginOS
+* 华为 EMUI / HarmonyOS Android 兼容层
+* 三星 OneUI
+
+兼容性重点：
+
+* 后台提醒是否被限制
+* 通知是否被折叠/静默
+* 悬浮窗权限入口是否不同
+* 辅助功能服务保活策略
+
+---
+
+## 12.4 第三方 app 兼容性
+
+对于微信、QQ、短信、电商等 app：
+
+* 不假设它们提供统一的文本处理接口
+* 优先使用分享、复制、辅助功能等通用途径
+* 不写死它们内部 UI 结构为唯一方案
+
+---
+
+# 13. 异常处理与降级策略
+
+## 13.1 文本为空
+
+处理：
+
+* 不进入导入流程
+* 提示“未接收到有效文本”
+
+---
+
+## 13.2 时间解析失败
+
+处理：
+
+* 不阻止用户创建提醒
+* 默认进入待办模式
+* 提醒时间留空，提示用户手动选择
+
+---
+
+## 13.3 地点解析失败
+
+处理：
+
+* 不做报错
+* 原文保留在备注中
+
+---
+
+## 13.4 无通知权限
+
+处理：
+
+* 仍可保存提醒
+* 但提醒不会触发通知
+* 保存前或保存后提示用户开启通知权限
+
+---
+
+## 13.5 系统日历不可用
+
+处理：
+
+* 若无法打开系统日历新增页，则提示失败
+* 同时允许用户将内容保存为待办
+* 后续版本可增加复制 event 文本的降级方案
+
+---
+
+## 13.6 Alarm 注册失败
+
+处理：
+
+* 保留提醒项
+* 标记为“未成功调度”
+* 提示用户稍后重试
+
+---
+
+## 13.7 剪贴板建议过于频繁
+
+处理：
+
+* 对相同文本去重
+* 设置冷却时间
+* 允许用户一键关闭建议
+
+---
+
+## 13.8 辅助功能不可用
+
+处理：
+
+* 不影响主流程
+* 仍保留分享与选中文本入口
+
+---
+
+# 14. 隐私与安全
+
+## 14.1 基本原则
+
+* 默认本地处理
+* 最小化存储
+* 不上传用户文本
+* 不保留不必要历史
+* 用户可清空数据
+
+---
+
+## 14.2 数据范围
+
+可存储：
+
+* 标题
+* 备注
+* 提醒时间
+* 来源 app 名称
+* 原始文本
+
+不应额外收集：
+
+* 设备标识
+* 用户通讯录
+* 位置信息（除非明确授权且功能需要）
+
+---
+
+## 14.3 日志策略
+
+* 日志中不得直接打印完整敏感文本
+* 只记录长度、解析类型、错误码等
+* debug 模式可适度增加日志，但应支持关闭
+
+---
+
+## 14.4 剪贴板策略
+
+* 仅在用户开启时监听
+* 仅做即时分析
+* 默认不长期保存所有复制历史
+* 对敏感文本应尽量少处理
+
+---
+
+## 14.5 辅助功能策略（后续）
+
+* 必须清晰告知用户用途
+* 必须允许随时关闭
+* 默认仅在指定场景下启用
+* 不做隐式上传或远程分析
+
+---
+
+# 15. 测试要求
+
+## 15.1 单元测试
+
+必须覆盖：
+
+* 时间解析逻辑
+* 标题生成逻辑
+* 类型分类逻辑
+* Reminder Repository
+* Reminder Scheduler 输入输出逻辑
+* Mapper 转换逻辑
+
+---
+
+## 15.2 集成测试
+
+应覆盖：
+
+* 分享文本进入 app
+* 解析后进入编辑页
+* 保存待办到数据库
+* 调度提醒
+* 日历 Intent 构建
+
+---
+
+## 15.3 UI 测试
+
+应覆盖：
+
+* 首页空状态
+* 导入确认页显示原文与建议
+* 待办编辑页默认值
+* 日历编辑页默认值
+* 设置开关保存
+
+---
+
+## 15.4 手工测试清单
+
+### 文本类型
+
+* 无时间文本
+* 单时间文本
+* 时间区间文本
+* 中英混合文本
+* 多个时间点文本
+* 超长文本
+
+### 场景来源
+
+* 短信
+* 浏览器网页
+* 邮件
+* 微信复制文本
+* 手动粘贴
+
+### 特殊场景
+
+* 快递短信
+* 课程通知
+* 面试通知
+* 开会通知
+* 截止时间提醒
+
+---
+
+# 16. 版本规划
+
+## 16.1 Milestone 1：工程基础骨架
+
+目标：
+
+* Android 项目可运行
+* Compose + Hilt + Room 集成
+* 页面与导航骨架完成
+
+交付：
+
+* HomeScreen
+* ImportConfirmScreen
+* ReminderEditorScreen
+* CalendarEditorScreen
+* SettingsScreen
+
+---
+
+## 16.2 Milestone 2：文本导入与解析
+
+目标：
+
+* 支持 ACTION_SEND / ACTION_PROCESS_TEXT
+* 导入文本并解析
+* 展示解析结果
+
+交付：
+
+* Share 接收模块
+* Parse UseCase
+* 导入确认页联动
+
+---
+
+## 16.3 Milestone 3：提醒创建与通知
+
+目标：
+
+* 保存 ReminderItem
+* 调度通知提醒
+* 首页展示提醒列表
+
+交付：
+
+* Room 数据库
+* ReminderRepository
+* ReminderScheduler
+* NotificationReceiver
+
+---
+
+## 16.4 Milestone 4：日历集成
+
+目标：
+
+* 构建日历草稿
+* 调起系统日历新增事件页
+
+交付：
+
+* CalendarDraft UseCase
+* CalendarIntentLauncher
+* CalendarEditorScreen
+
+---
+
+## 16.5 Milestone 5：剪贴板建议
+
+目标：
+
+* 监听复制文本
+* 智能建议
+* 降频与去重
+
+---
+
+## 16.6 Milestone 6：辅助功能增强
+
+目标：
+
+* 基础 Accessibility Service
+* 候选场景检测
+* 快捷浮层入口
+
+---
+
+# 17. AI 开发执行规则
+
+本节是**给 AI 的强制实现规范**。
+
+## 17.1 总体规则
+
+1. 必须采用 **Kotlin + Jetpack Compose + MVVM + Room + Hilt**
+2. 必须增量开发，不一次性实现全部功能
+3. 每次只实现一个明确的 milestone 或子任务
+4. 输出必须是**可运行且内部一致**的代码
+5. 不允许伪造不可用 API
+6. 若 Android 平台存在限制，必须明确说明，不得假装支持
+7. UI 层不得直接承担解析、数据库、系统调度逻辑
+8. 所有系统能力必须通过接口或 gateway 封装
+9. 所有异步处理使用协程
+10. 所有共享数据状态由 ViewModel 管理
+
+---
+
+## 17.2 代码结构规则
+
+* 一个文件只承担一种主要职责
+* 业务逻辑写在 use case / repository / parser 中
+* 页面状态统一使用 UI State
+* 避免 God Object
+* 数据库层不直接暴露给 UI
+* 允许预留 TODO，但必须标注原因与平台限制
+
+---
+
+## 17.3 每次任务输出格式
+
+AI 每次输出开发结果时，必须按以下顺序：
+
+1. **任务理解**
+2. **设计说明**
+3. **文件树**
+4. **完整代码**
+5. **Gradle 依赖更新**
+6. **Manifest 更新**
+7. **如何运行**
+8. **限制说明**
+9. **下一步建议**
+
+---
+
+## 17.4 Manifest 与权限处理规则
+
+* 任何新增权限必须说明原因
+* 任何新增 Activity / Service / Receiver 必须说明用途
+* 若功能可不依赖权限实现，优先无权限方案
+
+---
+
+## 17.5 测试输出规则
+
+AI 在实现核心模块时，必须尽量附带：
+
+* 单元测试样例
+* 关键逻辑测试
+* 至少说明如何测试
+
+---
+
+# 18. 交付物要求
+
+每个 milestone 至少应交付：
+
+* Android Studio 工程代码
+* 目录结构清单
+* 关键模块说明
+* Manifest 配置
+* 依赖配置
+* 运行说明
+* 已知问题列表
+* 下阶段建议
+
+最终项目应包含：
+
+* README
+* 模块说明文档
+* 权限说明文档
+* 测试说明
+* 后续 roadmap
+
+---
+
+# 19. 当前推荐迭代拆解
+
+## Iteration 1：创建工程骨架
+
+### 目标
+
+* 创建可运行 Android 项目
+* Compose + Hilt + Room 集成
+* 导航与基础页面建立
+* 定义核心 domain model
+
+### 验收标准
+
+* App 可运行
+* 首页显示空列表
+* 可进入设置页
+* 可进入导入确认页、提醒编辑页、日历编辑页
+* 核心 model 与数据库类已定义
+
+---
+
+## Iteration 2：接收分享文本
+
+### 目标
+
+* 支持 ACTION_SEND 文本接收
+* 从分享入口进入导入确认页
+* 初步解析文本并显示结果
+
+### 验收标准
+
+* 从浏览器或短信可将文本分享到 app
+* app 能展示原文
+* app 能展示标题建议和类型建议
+
+---
+
+## Iteration 3：提醒创建与通知
+
+### 目标
+
+* 保存 ReminderItem
+* 设置 reminderTime
+* 到时间发通知
+
+### 验收标准
+
+* 用户可创建提醒
+* 首页可展示提醒
+* 到点有通知
+
+---
+
+## Iteration 4：日历编辑与系统日历集成
+
+### 目标
+
+* 构建 CalendarDraft
+* 打开系统日历新增事件页
+
+### 验收标准
+
+* 若文本包含明确时间，则可带入日历
+* 系统日历中自动填好标题、时间、地点、描述
+
+---
+
+## Iteration 5：剪贴板建议
+
+### 目标
+
+* 开关控制
+* 剪贴板变化检测
+* 高置信度文本建议
+
+### 验收标准
+
+* 复制符合条件文本后出现建议
+* 相同内容不重复提示
+* 可在设置中关闭
+
+---
+
+# 20. 推荐工程目录结构
+
+```text
+app/
+  src/main/java/com/example/reminderassistant/
+    ReminderAssistantApp.kt
+
+    di/
+      AppModule.kt
+      DatabaseModule.kt
+      SystemModule.kt
+
+    navigation/
+      AppNavGraph.kt
+      Routes.kt
+
+    ui/
+      home/
+        HomeScreen.kt
+        HomeViewModel.kt
+        HomeUiState.kt
+      importflow/
+        ImportConfirmScreen.kt
+        ImportConfirmViewModel.kt
+        ImportUiState.kt
+      reminder/
+        ReminderEditorScreen.kt
+        ReminderEditorViewModel.kt
+        ReminderEditorUiState.kt
+      calendar/
+        CalendarEditorScreen.kt
+        CalendarEditorViewModel.kt
+        CalendarEditorUiState.kt
+      settings/
+        SettingsScreen.kt
+        SettingsViewModel.kt
+        SettingsUiState.kt
+      components/
+        CommonComponents.kt
+
+    domain/
+      model/
+        ReminderItem.kt
+        CalendarDraft.kt
+        ParsedContent.kt
+        SourceContext.kt
+        ImportRequest.kt
+      usecase/
+        ParseIncomingTextUseCase.kt
+        CreateReminderUseCase.kt
+        GetAllRemindersUseCase.kt
+        BuildCalendarDraftUseCase.kt
+        ScheduleReminderUseCase.kt
+
+    parser/
+      TextCleaner.kt
+      TimeParser.kt
+      LocationParser.kt
+      TitleGenerator.kt
+      ContentClassifier.kt
+      DefaultTextParser.kt
+
+    data/
+      local/
+        ReminderDatabase.kt
+        ReminderDao.kt
+        entity/
+          ReminderEntity.kt
+      repository/
+        ReminderRepository.kt
+        ReminderRepositoryImpl.kt
+      mapper/
+        ReminderMapper.kt
+      settings/
+        SettingsRepository.kt
+
+    system/
+      share/
+        ShareReceiverActivity.kt
+        ProcessTextActivity.kt
+      calendar/
+        CalendarIntentLauncher.kt
+      notification/
+        ReminderScheduler.kt
+        ReminderNotificationReceiver.kt
+        NotificationHelper.kt
+      clipboard/
+        ClipboardMonitor.kt
+      accessibility/
+        ReminderAccessibilityService.kt
+        AccessibilityTextExtractor.kt
+```
+
+---
+
+# 21. AI 开发 Prompt 模板
+
+下面这段可以直接在后续开发时喂给 AI：
+
+```text
+You are implementing an Android app based on the provided development spec.
+
+Project constraints:
+- Kotlin
+- Jetpack Compose
+- MVVM
+- Room
+- Hilt
+- Local-first
+- Incremental implementation only
+
+Execution rules:
+1. Do not implement the whole app at once.
+2. For each task, restate the goal and assumptions.
+3. Then provide:
+   - architecture decisions
+   - file tree
+   - complete code
+   - Gradle updates
+   - Manifest updates
+   - setup/run instructions
+   - limitations
+4. Keep business logic outside UI.
+5. Wrap system integrations behind interfaces where reasonable.
+6. If a platform limitation exists, state it explicitly.
+7. Make the code runnable and internally consistent.
+8. Prefer minimal working implementation first, then enhancements.
+
+Current task:
+[Replace this line with the current milestone or iteration]
+```
+
+---
+
+# 22. 首轮建议给 AI 的任务
+
+建议你先让 AI 实现这个任务：
+
+```text
+Task: Build milestone 1 of the Android app skeleton.
+
+Requirements:
+- Create a Kotlin Android app using Jetpack Compose
+- Use MVVM architecture
+- Add Hilt and Room
+- Create navigation with 5 screens:
+  - HomeScreen
+  - ImportConfirmScreen
+  - ReminderEditorScreen
+  - CalendarEditorScreen
+  - SettingsScreen
+- Define core domain models:
+  - ReminderItem
+  - ParsedContent
+  - SourceContext
+  - CalendarDraft
+  - ImportRequest
+- Create a Room database for reminders
+- Make the project runnable
+- Use placeholder UI where needed, but keep code clean and extensible
+
+Output format:
+1. architecture summary
+2. file tree
+3. all code files
+4. Gradle dependencies
+5. manifest changes
+6. how to run
+7. next milestone recommendation
+```
+
+---
+
+# 23. README 建议结构
+
+项目 README 建议由 AI 自动生成，结构如下：
+
+* 项目简介
+* 功能概述
+* 技术栈
+* 工程结构
+* 如何运行
+* 权限说明
+* 当前版本范围
+* 后续 roadmap
+* 已知限制
+
+---
+
+# 24. 已知平台事实与实现原则
+
+这些内容 AI 在开发中必须默认遵守：
+
+1. 普通 Android app **不能保证**直接向所有第三方 app 的长按菜单原生插入一个自定义菜单项。
+2. 标准可行入口是：
+
+   * 分享
+   * 选中文本处理
+   * 剪贴板建议
+   * 后续辅助功能浮层
+3. v1 应优先使用 **系统日历 Intent**，而不是一开始就要求日历 Provider 直写。
+4. 辅助功能增强应作为后续能力，而不是核心链路依赖。
+5. 出错时默认降级为“保存为待办”。
+
+---
+
+# 25. 结语
+
+本项目的关键不是追求“所有 app 长按菜单里真的多一个提醒按钮”，而是通过标准 Android 能力和渐进增强能力，做到：
+
+**“从任意信息出发，尽可能快地进入提醒或日历创建流程。”**
+
+因此，开发时应始终遵守以下产品原则：
+
+* 统一入口到统一导入流程
+* 自动解析优先，但用户确认更重要
+* 先做标准能力，再做增强能力
+* 先做可运行 MVP，再做复杂适配
+* 平台限制要诚实，体验设计要聪明
+
+---
+
+如果你愿意，我下一条可以继续直接帮你生成：
+
+**“Milestone 1 的完整 AI 开发任务包”**
+也就是把第一阶段要喂给 AI 的提示词、目录树、验收标准、编码规则再细化成一份可直接开工的任务说明。

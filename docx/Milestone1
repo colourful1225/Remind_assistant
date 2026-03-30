@@ -1,0 +1,852 @@
+下面是可直接给 AI 开工的 **Milestone 1 完整任务包**。
+它的目标非常明确：**先把工程骨架搭起来，保证能运行、能扩展、结构干净。**
+
+你可以把它保存为：
+
+**`Milestone_1_AI_Task_Pack.md`**
+
+---
+
+# Milestone 1 - AI Development Task Pack
+
+## 1. 本轮目标
+
+本轮只做 **工程基础骨架**，不追求复杂功能，不追求完整业务闭环。
+
+### 本轮必须完成
+
+1. 创建一个可运行的 Android App
+2. 使用 **Kotlin + Jetpack Compose**
+3. 使用 **MVVM**
+4. 集成 **Hilt**
+5. 集成 **Room**
+6. 建立基础导航
+7. 创建 5 个页面骨架
+8. 定义核心领域模型
+9. 创建提醒数据表与 DAO
+10. 首页能读取并显示本地提醒列表（即使为空）
+11. 页面之间可以正常跳转
+12. 代码结构为后续文本导入、解析、提醒调度预留扩展空间
+
+### 本轮明确不做
+
+1. 不做分享接收
+2. 不做文本解析
+3. 不做通知调度
+4. 不做系统日历跳转
+5. 不做剪贴板监听
+6. 不做辅助功能
+7. 不做复杂 UI 美化
+8. 不做完整测试覆盖，但核心结构要可测试
+
+---
+
+# 2. 本轮验收标准
+
+AI 产出的代码必须满足以下验收条件。
+
+## 2.1 运行验收
+
+* 项目能在 Android Studio 正常打开
+* 能成功编译运行
+* 首次启动进入首页
+* 不崩溃
+
+## 2.2 页面验收
+
+应用中必须至少具备以下页面，并能导航到达：
+
+* HomeScreen
+* ImportConfirmScreen
+* ReminderEditorScreen
+* CalendarEditorScreen
+* SettingsScreen
+
+## 2.3 架构验收
+
+必须包含以下层次：
+
+* UI / Presentation
+* Domain
+* Data
+* DI
+* Navigation
+
+## 2.4 数据验收
+
+必须具备：
+
+* ReminderEntity
+* ReminderDao
+* ReminderDatabase
+* ReminderRepository 接口
+* ReminderRepositoryImpl
+
+## 2.5 模型验收
+
+必须定义：
+
+* ReminderItem
+* ParsedContent
+* SourceContext
+* CalendarDraft
+* ImportRequest
+
+## 2.6 首页验收
+
+首页必须：
+
+* 展示标题或列表页结构
+* 从 Room 读取提醒列表
+* 空列表时展示空状态
+* 至少有按钮能跳到：
+
+  * 导入确认页
+  * 提醒编辑页
+  * 日历编辑页
+  * 设置页
+
+---
+
+# 3. 本轮实现范围说明
+
+本轮是 **骨架搭建阶段**。
+所有页面可以是占位 UI，但代码必须是“真结构”，不是随便拼一个单文件 demo。
+
+## 3.1 可以接受的占位内容
+
+* ImportConfirmScreen 先展示假数据
+* ReminderEditorScreen 先只显示表单骨架
+* CalendarEditorScreen 先只显示表单骨架
+* SettingsScreen 先只显示开关占位项
+
+## 3.2 不可接受的内容
+
+* 所有逻辑全塞 MainActivity
+* 没有 ViewModel
+* 没有 Room，只用 mutableList 假装数据库
+* 没有 Hilt，靠手动全局单例乱传
+* 没有分层
+* 路由硬编码在多个地方且无法维护
+
+---
+
+# 4. 技术要求
+
+## 4.1 固定技术栈
+
+* Kotlin
+* Jetpack Compose
+* Navigation Compose
+* Hilt
+* Room
+* Coroutines
+* MVVM
+
+## 4.2 推荐版本原则
+
+* 使用当前稳定版本依赖
+* 避免实验性库，除非确有必要
+* 避免引入不必要的第三方框架
+
+## 4.3 minSdk / targetSdk
+
+建议：
+
+* `minSdk = 26`
+* `targetSdk = 最新稳定版本`
+
+---
+
+# 5. AI 实现规则
+
+以下是本轮开发时 AI 必须遵守的规则。
+
+## 5.1 输出顺序
+
+每次输出必须严格按这个顺序：
+
+1. 任务理解
+2. 架构设计说明
+3. 文件树
+4. 完整代码
+5. Gradle 配置
+6. Manifest 配置
+7. 运行说明
+8. 当前限制
+9. 下一步建议
+
+## 5.2 代码规则
+
+* 使用 Kotlin
+* 页面必须用 Compose
+* 每个 Screen 对应自己的 ViewModel
+* UI 状态不要直接散落在页面里
+* 所有数据库逻辑都通过 Repository
+* 业务模型与数据库实体分离
+* 使用 mapper 做转换
+* 所有依赖通过 Hilt 注入
+* 保持文件职责单一
+* 不要把未来功能硬写死在当前代码里
+
+## 5.3 命名规则
+
+* 路由统一放在 `Routes.kt`
+* 页面命名统一 `XxxScreen.kt`
+* ViewModel 统一 `XxxViewModel.kt`
+* UI State 统一 `XxxUiState.kt`
+* UseCase 命名统一 `VerbNounUseCase.kt`
+* Repository 接口与实现分离
+
+## 5.4 保守原则
+
+* 先实现最小可运行结构
+* 不要提前实现 Milestone 2 及以后的复杂功能
+* 可以预留 TODO 注释，但必须明确原因
+
+---
+
+# 6. 工程目录要求
+
+AI 应按下面结构生成工程代码。
+
+```text
+app/
+  src/main/java/com/example/reminderassistant/
+    ReminderAssistantApp.kt
+    MainActivity.kt
+
+    di/
+      AppModule.kt
+      DatabaseModule.kt
+
+    navigation/
+      AppNavGraph.kt
+      Routes.kt
+
+    ui/
+      home/
+        HomeScreen.kt
+        HomeViewModel.kt
+        HomeUiState.kt
+      importflow/
+        ImportConfirmScreen.kt
+        ImportConfirmViewModel.kt
+        ImportUiState.kt
+      reminder/
+        ReminderEditorScreen.kt
+        ReminderEditorViewModel.kt
+        ReminderEditorUiState.kt
+      calendar/
+        CalendarEditorScreen.kt
+        CalendarEditorViewModel.kt
+        CalendarEditorUiState.kt
+      settings/
+        SettingsScreen.kt
+        SettingsViewModel.kt
+        SettingsUiState.kt
+      components/
+        AppTopBar.kt
+        EmptyStateView.kt
+
+    domain/
+      model/
+        ReminderItem.kt
+        ParsedContent.kt
+        SourceContext.kt
+        CalendarDraft.kt
+        ImportRequest.kt
+      repository/
+        ReminderRepository.kt
+      usecase/
+        GetAllRemindersUseCase.kt
+        CreateReminderUseCase.kt
+
+    data/
+      local/
+        ReminderDatabase.kt
+        ReminderDao.kt
+        entity/
+          ReminderEntity.kt
+      repository/
+        ReminderRepositoryImpl.kt
+      mapper/
+        ReminderMapper.kt
+
+    preview/
+      PreviewData.kt
+```
+
+如果 AI 认为需要增加少量辅助文件，可以增加，但必须说明原因。
+
+---
+
+# 7. 详细功能要求
+
+## 7.1 Application 层
+
+### ReminderAssistantApp.kt
+
+要求：
+
+* 使用 `@HiltAndroidApp`
+* 作为应用入口类
+
+---
+
+## 7.2 MainActivity
+
+要求：
+
+* 使用 `@AndroidEntryPoint`
+* 设置 Compose 内容
+* 承载 `AppNavGraph`
+* 使用 Material 3
+
+---
+
+## 7.3 Navigation
+
+### Routes.kt
+
+要求：
+
+* 集中定义所有页面路由常量
+* 至少包含：
+
+  * home
+  * import_confirm
+  * reminder_editor
+  * calendar_editor
+  * settings
+
+### AppNavGraph.kt
+
+要求：
+
+* 使用 Navigation Compose
+* 设置 `home` 为起始页
+* 定义所有页面 composable 路由
+* 支持从首页跳转到其他 4 个页面
+
+---
+
+## 7.4 Domain 模型
+
+### ReminderItem
+
+至少包含：
+
+* id
+* title
+* note
+* reminderTime
+* createdAt
+* updatedAt
+* rawText
+* sourceAppName
+
+### ParsedContent
+
+至少包含：
+
+* rawText
+* cleanedText
+* suggestedTitle
+* detectedType
+* detectedTime
+* detectedLocation
+* confidenceScore
+
+### SourceContext
+
+至少包含：
+
+* sourceType
+* sourceAppPackage
+* sourceAppName
+* receivedAt
+
+### CalendarDraft
+
+至少包含：
+
+* title
+* description
+* startTime
+* endTime
+* allDay
+* location
+
+### ImportRequest
+
+至少包含：
+
+* text
+* sourceContext
+
+可以增加 enum：
+
+* ParsedType
+* SourceType
+
+---
+
+## 7.5 Data 层
+
+### ReminderEntity
+
+作为 Room 实体，至少包含：
+
+* id
+* title
+* note
+* reminderTime
+* createdAt
+* updatedAt
+* rawText
+* sourceAppName
+
+### ReminderDao
+
+至少包含：
+
+* `getAllReminders(): Flow<List<ReminderEntity>>`
+* `insertReminder(entity: ReminderEntity)`
+* `deleteReminder(entity: ReminderEntity)`
+
+### ReminderDatabase
+
+要求：
+
+* 标准 Room Database
+* 版本先用 `1`
+* 暂不做 migration，允许 `fallbackToDestructiveMigration()` 也可以，但要说明
+
+### ReminderMapper
+
+要求：
+
+* `ReminderEntity -> ReminderItem`
+* `ReminderItem -> ReminderEntity`
+
+### ReminderRepository
+
+接口至少包含：
+
+* `getAllReminders(): Flow<List<ReminderItem>>`
+* `createReminder(item: ReminderItem)`
+
+### ReminderRepositoryImpl
+
+要求：
+
+* 通过 DAO 实现 Repository
+* 使用 mapper 做转换
+* 被 Hilt 注入
+
+---
+
+## 7.6 UseCase 层
+
+### GetAllRemindersUseCase
+
+职责：
+
+* 获取所有提醒列表
+
+### CreateReminderUseCase
+
+职责：
+
+* 创建提醒项
+* 当前阶段可以由 ReminderEditor 页面调用
+
+---
+
+## 7.7 Home 页面
+
+### HomeScreen
+
+要求：
+
+* 展示页面标题
+* 展示提醒列表
+* 空状态时展示 “暂无提醒”
+* 页面中提供按钮：
+
+  * 去导入确认页
+  * 去提醒编辑页
+  * 去日历编辑页
+  * 去设置页
+
+### HomeViewModel
+
+要求：
+
+* 注入 `GetAllRemindersUseCase`
+* 暴露 `HomeUiState`
+* 使用 StateFlow
+
+### HomeUiState
+
+要求：
+至少包含：
+
+* `isLoading`
+* `reminders`
+
+---
+
+## 7.8 ImportConfirm 页面
+
+### 当前阶段作用
+
+只是占位页面，用于后续承接外部文本导入。
+
+### 要求
+
+* 展示一个假的示例原文
+* 展示一个假的解析结果
+* 提供两个按钮：
+
+  * 作为提醒继续
+  * 作为日历事件继续
+
+### ImportConfirmViewModel
+
+要求：
+
+* 可先初始化为静态假数据
+* 后续便于接收 `ImportRequest`
+
+---
+
+## 7.9 ReminderEditor 页面
+
+### 当前阶段作用
+
+用于创建一个简单的提醒项。
+
+### UI 要求
+
+字段至少有：
+
+* 标题输入框
+* 备注输入框
+* 保存按钮
+
+### 当前阶段可以简化
+
+* reminderTime 先不做时间选择器
+* 可以保存时自动写一个当前时间或空值
+
+### ReminderEditorViewModel
+
+要求：
+
+* 注入 `CreateReminderUseCase`
+* 管理表单状态
+* 保存成功后可触发简单事件，如返回首页或清空表单
+
+---
+
+## 7.10 CalendarEditor 页面
+
+### 当前阶段作用
+
+只是占位页面，表示后续会承接日历事件编辑。
+
+### 要求
+
+字段至少展示：
+
+* 标题
+* 开始时间占位
+* 结束时间占位
+* 地点
+* 描述
+* 按钮：后续接入系统日历
+
+### 当前阶段不要求真的调日历
+
+---
+
+## 7.11 Settings 页面
+
+### 当前阶段作用
+
+展示未来配置入口。
+
+### 至少包含占位项
+
+* 剪贴板建议：关闭
+* 通知提醒：未配置
+* 辅助功能增强：关闭
+
+可以都是只读占位，不要求真实持久化。
+
+---
+
+# 8. UI 风格要求
+
+## 8.1 风格目标
+
+* 简洁
+* 系统感
+* 轻量
+* 不要过度设计
+
+## 8.2 建议
+
+* 使用 Material 3
+* 使用 `Scaffold`
+* 每个页面使用统一 top bar
+* 表单页面留足内边距
+* 列表项保持简单
+
+## 8.3 不要求
+
+* 不要求复杂动画
+* 不要求深色模式定制
+* 不要求品牌视觉系统
+
+---
+
+# 9. Hilt 要求
+
+## 9.1 必须提供的 Module
+
+### DatabaseModule
+
+负责提供：
+
+* Room Database
+* ReminderDao
+
+### AppModule
+
+负责提供：
+
+* ReminderRepository
+* UseCase
+
+## 9.2 注入原则
+
+* ViewModel 使用 `@HiltViewModel`
+* Repository 通过构造函数注入
+* Activity 使用 `@AndroidEntryPoint`
+
+---
+
+# 10. Gradle 要求
+
+AI 必须补全以下类别依赖：
+
+* Compose
+* Navigation Compose
+* Hilt
+* Hilt Compiler
+* Room Runtime
+* Room KTX
+* Room Compiler
+* Lifecycle ViewModel Compose
+* Lifecycle Runtime Compose
+* Coroutines
+* Activity Compose
+
+并保证版本彼此兼容。
+
+---
+
+# 11. Manifest 要求
+
+当前阶段至少需要：
+
+* 声明 Application 类
+* 声明 MainActivity
+* 不要求任何危险权限
+* 不要求 Receiver / Service
+
+---
+
+# 12. 运行说明要求
+
+AI 必须说明：
+
+1. 如何在 Android Studio 中打开项目
+2. 如何同步 Gradle
+3. 如何运行到模拟器/真机
+4. 首页如何测试保存提醒
+5. 数据库如何验证是否工作
+
+---
+
+# 13. 当前阶段限制说明
+
+AI 必须主动声明这些限制：
+
+* 没有接入分享入口
+* 没有文本解析
+* 没有通知提醒
+* 没有系统日历集成
+* ReminderEditor 保存逻辑为基础版
+* ImportConfirm/CalendarEditor/Settings 目前多为骨架页
+
+---
+
+# 14. 下一步建议
+
+Milestone 1 完成后，下一步应该进入 **Milestone 2：文本导入与解析**。
+
+下一步目标：
+
+1. 接收 ACTION_SEND 文本
+2. 建立 ImportRequest 传递链路
+3. 基础文本解析器
+4. 在导入确认页显示真实输入文本
+5. 根据解析结果决定进入提醒编辑或日历编辑
+
+---
+
+# 15. 可直接投喂 AI 的执行 Prompt
+
+下面这段你可以直接复制给 AI：
+
+```text
+You are implementing Milestone 1 for an Android app called Global Reminder Assistant.
+
+Goal:
+Build the project skeleton only. Do not implement advanced features yet.
+
+Tech stack requirements:
+- Kotlin
+- Jetpack Compose
+- MVVM
+- Hilt
+- Room
+- Navigation Compose
+- Coroutines
+- Material 3
+
+What must be built:
+1. A runnable Android app
+2. Hilt application setup
+3. Room database setup
+4. Navigation graph
+5. 5 screens:
+   - HomeScreen
+   - ImportConfirmScreen
+   - ReminderEditorScreen
+   - CalendarEditorScreen
+   - SettingsScreen
+6. Core domain models:
+   - ReminderItem
+   - ParsedContent
+   - SourceContext
+   - CalendarDraft
+   - ImportRequest
+7. Data layer:
+   - ReminderEntity
+   - ReminderDao
+   - ReminderDatabase
+   - ReminderRepository
+   - ReminderRepositoryImpl
+   - ReminderMapper
+8. Use cases:
+   - GetAllRemindersUseCase
+   - CreateReminderUseCase
+9. Home screen must read reminders from Room and show empty state if none
+10. Reminder editor must allow creating a basic reminder with title and note
+
+Important constraints:
+- Do NOT implement share receiving yet
+- Do NOT implement parsing yet
+- Do NOT implement notifications yet
+- Do NOT implement calendar integration yet
+- Keep placeholder screens for non-core pages
+- Keep code clean and extensible
+- Separate UI, domain, and data layers
+- Use Hilt injection properly
+
+Required output format:
+1. Task understanding
+2. Architecture design
+3. File tree
+4. Full code
+5. Gradle setup
+6. AndroidManifest setup
+7. How to run
+8. Current limitations
+9. Recommended next step
+```
+
+---
+
+# 16. 更强约束版 Prompt
+
+如果你想让 AI 少跑偏，用这版：
+
+```text
+Implement Milestone 1 only.
+
+Do not skip files.
+Do not compress the answer too much.
+Do not use pseudo-code.
+Do not put everything in one file.
+Do not replace Room with in-memory data.
+Do not omit Hilt setup.
+Do not omit navigation.
+Do not invent unsupported APIs.
+
+The code must be runnable and internally consistent.
+If any placeholder is used, clearly mark it as placeholder.
+Use package name: com.example.reminderassistant
+```
+
+---
+
+# 17. 你作为人类验收时重点看什么
+
+拿到 AI 产出后，优先检查：
+
+## 17.1 工程是否真能运行
+
+不是看“看起来像”，而是：
+
+* Gradle 是否完整
+* Application / Hilt 是否配置正确
+* Room 是否有 annotation processor
+* Navigation 是否能编译过
+
+## 17.2 结构是否真分层
+
+看：
+
+* 页面里有没有直接写 SQL/DAO
+* ViewModel 有没有直接 new repository
+* Domain model 和 entity 是否混在一起
+
+## 17.3 首页是否真从数据库读
+
+不是写死假列表，而是真正 collect Room Flow
+
+## 17.4 ReminderEditor 是否真能写入数据库
+
+保存后回首页，能否看到新增项
+
+---
+
+# 18. 这轮完成后的理想结果
+
+Milestone 1 完成后，你应该得到一个：
+
+* 可运行
+* 可导航
+* 可保存简单提醒
+* 有清晰架构
+* 有后续扩展空间
+
+的 Android 项目骨架。
+
+这一步不是产品完成，而是**把地基打稳*

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Remind Assistant</string>
+    <string name="home_title">My Reminders</string>
+    <string name="no_reminders">No reminders yet</string>
+    <string name="add_reminder">Add Reminder</string>
+    <string name="go_to_import">Import</string>
+    <string name="go_to_reminder_editor">New Reminder</string>
+    <string name="go_to_calendar_editor">New Calendar Event</string>
+    <string name="go_to_settings">Settings</string>
+    <string name="import_confirm_title">Confirm Import</string>
+    <string name="reminder_editor_title">Edit Reminder</string>
+    <string name="calendar_editor_title">Edit Calendar Event</string>
+    <string name="settings_title">Settings</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="delete">Delete</string>
+    <string name="title">Title</string>
+    <string name="note">Note</string>
+    <string name="reminder_time">Reminder Time</string>
+    <string name="event_title">Event Title</string>
+    <string name="event_start_time">Start Time</string>
+    <string name="event_end_time">End Time</string>
+    <string name="event_location">Location</string>
+    <string name="event_description">Description</string>
+</resources>

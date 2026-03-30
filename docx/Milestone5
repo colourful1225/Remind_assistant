@@ -1,0 +1,972 @@
+下面是 **Milestone 5 完整任务包**。
+这一轮的目标是做出你设想里非常关键的一层：**轻量、低打扰、跨 app 的“复制后建议入口”**。
+
+它不是最终的“全局长按菜单注入”，但它是**最现实、最容易落地、覆盖面又很广**的一步。
+
+你可以把它保存为：
+
+**`Milestone_5_AI_Task_Pack.md`**
+
+---
+
+# Milestone 5 - AI Development Task Pack
+
+## 1. 本轮目标
+
+本轮聚焦 **剪贴板建议、去重与冷却策略、设置开关、轻量触发体验**。
+
+在 Milestone 4 的基础上，本轮要实现：
+
+**用户在任意 app 复制一段文本 -> app 检测到可提醒内容 -> 给出轻量建议 -> 用户点击后进入导入确认页 / 提醒编辑页 / 日历编辑页**
+
+### 本轮必须完成
+
+1. 新增剪贴板监听模块
+2. 在用户复制文本后，识别该文本是否值得建议
+3. 仅对高价值文本显示建议
+4. 建立建议去重策略
+5. 建立建议冷却策略
+6. 在设置页加入：
+
+   * 剪贴板建议开关
+   * 建议冷却时间设置（可简化为固定选项）
+7. 建议 UI 必须轻量，不可过度打扰
+8. 用户点击建议后，应进入已有导入流程
+9. 用户可以忽略建议，不影响正常使用
+10. 该功能默认应为**保守触发**，避免频繁误弹
+
+---
+
+# 2. 本轮明确不做
+
+1. 不做辅助功能服务
+2. 不做悬浮窗权限方案
+3. 不做全局悬浮球
+4. 不做通知栏长期驻留
+5. 不做 OCR
+6. 不做云端文本分析
+7. 不做复杂机器学习排序
+8. 不做多级推荐卡片系统
+9. 不做基于全部历史行为的个性化推荐
+10. 不做所有 app 场景的强制触达
+
+---
+
+# 3. 本轮验收标准
+
+## 3.1 监听验收
+
+* 用户复制文本后，app 能检测到剪贴板变化
+* 不崩溃
+* 不明显拖慢系统
+
+## 3.2 建议触发验收
+
+对高价值文本，系统会给出建议，例如：
+
+* 加入提醒
+* 加入日历
+
+## 3.3 去重验收
+
+* 同一段文本短时间内不会重复建议
+* 用户刚刚忽略过的内容不会马上再次出现
+
+## 3.4 冷却验收
+
+* 在设定的冷却窗口内，不会连续频繁弹出建议
+* 冷却时间可配置或至少可预设
+
+## 3.5 设置验收
+
+设置页中必须具备：
+
+* 剪贴板建议开关
+* 建议冷却时间选项
+* 是否仅对高置信度文本触发（可做成开关或默认固定策略）
+
+## 3.6 导入链路验收
+
+* 点击建议后能进入既有导入流程
+* 导入确认页显示真实复制文本
+* 后续可继续进入提醒或日历编辑页
+
+---
+
+# 4. 本轮范围说明
+
+## 4.1 本轮核心是“轻量入口”
+
+这一轮不追求“所有 app 长按菜单都插进去”，而是实现一个**真正能跨 app 使用、成本低、体验自然**的入口。
+
+## 4.2 产品定位
+
+这不是一个“剪贴板历史管理器”，而是一个：
+**“从复制内容中识别值得提醒/加入日历的信息，并给出一次性建议”** 的助手。
+
+---
+
+# 5. 技术要求
+
+延续现有技术栈：
+
+* Kotlin
+* Jetpack Compose
+* MVVM
+* Hilt
+* Room
+* Navigation Compose
+* Coroutines
+* Material 3
+
+本轮新增重点能力：
+
+* ClipboardManager
+* 轻量建议触发机制
+* 本地策略存储
+* 节流 / 去重 / 冷却逻辑
+
+---
+
+# 6. AI 实现规则
+
+## 6.1 输出顺序
+
+AI 输出必须严格按以下顺序：
+
+1. 任务理解
+2. 设计说明
+3. 新增 / 修改文件树
+4. 完整代码
+5. Gradle 更新
+6. Manifest 更新
+7. 如何测试
+8. 当前限制
+9. 下一步建议
+
+## 6.2 必须遵守
+
+* 不要把剪贴板监听逻辑散落在多个页面里
+* 不要每次 app 前台都无脑读取全部剪贴板并频繁弹窗
+* 不要把建议历史只放内存里，至少要有基础持久化策略
+* 不要对低价值文本频繁建议
+* 不要用系统通知替代轻量建议 UI，除非你明确说明是设计选择
+* 不要破坏现有导入与解析链路
+* 不要让这个功能默认变成骚扰源
+
+---
+
+# 7. 工程目录要求
+
+在 Milestone 4 基础上，至少新增/完善以下结构：
+
+```text id="cjbjpj"
+app/
+  src/main/java/com/example/reminderassistant/
+    system/
+      clipboard/
+        ClipboardMonitor.kt
+        ClipboardMonitorImpl.kt
+        ClipboardContentObserver.kt
+
+    domain/
+      model/
+        ClipboardSuggestion.kt
+        SuggestionDecision.kt
+      usecase/
+        DetectClipboardSuggestionUseCase.kt
+        RecordSuggestionShownUseCase.kt
+        DismissSuggestionUseCase.kt
+
+    data/
+      settings/
+        SettingsRepository.kt
+      suggestion/
+        ClipboardSuggestionRepository.kt
+        ClipboardSuggestionRepositoryImpl.kt
+        model/
+          SuggestionHistoryRecord.kt
+
+    ui/
+      clipboard/
+        ClipboardSuggestionHost.kt
+        ClipboardSuggestionViewModel.kt
+        ClipboardSuggestionUiState.kt
+        ClipboardSuggestionCard.kt
+
+      settings/
+        SettingsScreen.kt
+        SettingsViewModel.kt
+        SettingsUiState.kt
+```
+
+如果 AI 认为需要增加：
+
+* `ClipboardTextHasher`
+* `SuggestionCooldownPolicy`
+* `ForegroundAppStateObserver`
+* `SuggestionThrottleManager`
+
+可以增加，但必须说明原因。
+
+---
+
+# 8. 功能链路要求
+
+## 8.1 主链路
+
+### 用户动作
+
+用户在任意 app 中复制一段文本。
+
+### 系统行为
+
+系统剪贴板内容变化。
+
+### 应用行为
+
+1. `ClipboardMonitor` 监听到变化
+2. 读取文本
+3. 构建 `ImportRequest`（sourceType = CLIPBOARD）
+4. 调用 `DetectClipboardSuggestionUseCase`
+5. 若判断“值得建议”，显示轻量建议 UI
+6. 用户点击建议
+7. 进入导入确认页或直接进入相应编辑页
+
+---
+
+## 8.2 忽略链路
+
+若用户不点击：
+
+* 建议自动消失或可手动关闭
+* 记录该文本已建议过
+* 短时间内不再重复出现
+
+---
+
+## 8.3 拒绝链路
+
+若用户主动关闭建议：
+
+* 记录 dismiss 行为
+* 提高该文本的冷却期
+* 避免立刻再次建议
+
+---
+
+# 9. SourceType 扩展要求
+
+本轮必须扩展 `SourceType`：
+
+* `SHARE`
+* `PROCESS_TEXT`
+* `CLIPBOARD`
+* `MANUAL`
+
+如果之前已有不同定义，本轮需补齐 `CLIPBOARD`。
+
+---
+
+# 10. 建议模型要求
+
+## 10.1 ClipboardSuggestion
+
+至少包含：
+
+* `rawText: String`
+* `suggestedTitle: String`
+* `suggestedType: ParsedType`
+* `detectedTimeText: String?`
+* `detectedLocation: String?`
+* `confidenceScore: Float`
+* `createdAt: Long`
+
+可选增加：
+
+* `entryAction: SuggestionEntryAction`
+* `sourceContext: SourceContext`
+
+---
+
+## 10.2 SuggestionDecision
+
+建议包含以下结果之一：
+
+* `SHOW_TODO_SUGGESTION`
+* `SHOW_EVENT_SUGGESTION`
+* `DO_NOT_SHOW`
+* `SHOW_GENERIC_IMPORT`
+
+AI 也可用 sealed class 表达，但必须清晰。
+
+---
+
+## 10.3 SuggestionHistoryRecord
+
+用于记录历史建议行为，至少包含：
+
+* `textHash: String`
+* `lastShownAt: Long`
+* `lastDismissedAt: Long?`
+* `lastAcceptedAt: Long?`
+* `shownCount: Int`
+
+---
+
+# 11. Settings 要求
+
+## 11.1 SettingsRepository
+
+必须支持读取与保存以下配置：
+
+* `clipboardSuggestionEnabled: Boolean`
+* `clipboardSuggestionCooldownMinutes: Int`
+* `clipboardSuggestionHighConfidenceOnly: Boolean`
+
+若 AI 不想支持全部，也至少必须支持前两个。
+
+---
+
+## 11.2 设置页 UI 要求
+
+`SettingsScreen` 需要新增以下项：
+
+### 1. 剪贴板建议
+
+* 开关：开 / 关
+
+### 2. 建议冷却时间
+
+可简化为单选项，例如：
+
+* 1 分钟
+* 5 分钟
+* 15 分钟
+* 30 分钟
+
+### 3. 仅高置信度触发
+
+* 开关：是 / 否
+
+---
+
+# 12. ClipboardMonitor 要求
+
+## 12.1 职责
+
+负责监听剪贴板变化，并向上层发出“新文本已出现”的事件。
+
+## 12.2 实现要求
+
+推荐基于：
+
+* `ClipboardManager`
+* `OnPrimaryClipChangedListener`
+
+## 12.3 约束
+
+* 仅在 app 合理生命周期内监听
+* 不做高频后台常驻轮询
+* 需要可开启/关闭
+* 必须处理空文本、非文本内容、超长文本
+
+---
+
+## 12.4 过滤要求
+
+以下情况必须过滤掉，不建议：
+
+* 空文本
+* 纯短 token，例如单个字母、纯数字验证码类（可保守过滤）
+* 文本长度过短且无任务语义
+* 与最近一次建议内容完全相同，且处于冷却期内
+* 设置中功能已关闭
+
+---
+
+# 13. DetectClipboardSuggestionUseCase 要求
+
+## 13.1 职责
+
+判断新复制文本是否应该触发建议。
+
+## 13.2 输入
+
+* `ImportRequest`
+* 当前 settings
+* 当前 suggestion history
+* 当前时间
+
+## 13.3 输出
+
+* `SuggestionDecision`
+* 或 `ClipboardSuggestion?`
+
+---
+
+## 13.4 判断规则建议
+
+### 必须考虑的维度
+
+1. 文本是否有意义
+2. 是否含时间 / 地点 / 任务关键词
+3. 是否像会议 / 约定 / 截止事项
+4. 置信度是否足够
+5. 是否在冷却期内
+6. 是否已经显示过太多次
+7. 用户是否刚刚 dismiss 过
+
+---
+
+## 13.5 建议规则（基础版）
+
+若满足以下任一组合，则可建议：
+
+### TODO 倾向
+
+* 包含任务类关键词：
+
+  * 记得
+  * 去
+  * 取
+  * 拿
+  * 交
+  * 提交
+  * 缴费
+  * 办理
+  * 确认
+* 且文本长度合理
+* 且不在冷却期
+
+### EVENT 倾向
+
+* 含明确时间
+* 或含事件词：
+
+  * 会议
+  * 组会
+  * 面试
+  * 答辩
+  * 上课
+  * 活动
+* 且不在冷却期
+
+### GENERIC IMPORT 倾向
+
+* 置信度中等，但文本明显比普通片段更像“待处理信息”
+
+---
+
+# 14. 去重与冷却策略要求
+
+## 14.1 文本去重
+
+推荐对文本做标准化后 hash，记录历史。
+
+### 标准化建议
+
+* trim
+* 空白压缩
+* 统一换行
+* 可转小写（对英文）
+
+---
+
+## 14.2 冷却规则
+
+必须至少支持：
+
+### 规则 A：全局冷却
+
+一旦显示过建议，在接下来 X 分钟内不再连续显示过多建议。
+
+### 规则 B：同文本冷却
+
+同一段文本在 X 分钟内不重复建议。
+
+### 规则 C：dismiss 强冷却
+
+若用户主动关闭，冷却时间应更长。
+
+---
+
+## 14.3 shownCount 限制
+
+同一段文本累计建议次数应有限制。
+例如超过 3 次后默认不再建议，除非用户再次复制并间隔很长。
+
+AI 可自由调整具体数字，但必须说明策略。
+
+---
+
+# 15. 建议 UI 要求
+
+## 15.1 UI 目标
+
+* 轻量
+* 明确
+* 不抢主流程
+* 可一眼看懂
+* 可关闭
+
+## 15.2 形式要求
+
+本轮接受以下任一方案：
+
+### 方案 A：app 内顶部 / 底部轻提示卡片
+
+适合当 app 在前台时。
+
+### 方案 B：轻量 overlay 样式，但不要求 SYSTEM_ALERT_WINDOW
+
+只要在 app 内合理展示即可。
+
+### 方案 C：进入 app 后展示一次建议卡片
+
+也可接受，但会稍弱。
+
+推荐优先：
+**A：应用内轻量建议宿主 + 卡片**
+
+---
+
+## 15.3 ClipboardSuggestionCard 内容
+
+至少显示：
+
+* 标题建议
+* 建议类型（提醒 / 日历）
+* 时间提示（若有）
+* 操作按钮：
+
+  * 加入提醒
+  * 加入日历
+  * 关闭
+
+若 AI 觉得按钮过多，也可简化为：
+
+* 继续
+* 关闭
+  但必须清晰说明后续默认进入哪条链路。
+
+---
+
+## 15.4 自动消失
+
+建议卡片应支持：
+
+* 若用户无操作，若干秒后自动消失
+* 或停留到用户关闭，但不得阻塞
+
+建议优先：
+
+* 5~8 秒自动消失
+* 用户仍可主动关闭
+
+---
+
+# 16. ClipboardSuggestionViewModel 要求
+
+## 16.1 职责
+
+* 监听 `ClipboardMonitor`
+* 调用 `DetectClipboardSuggestionUseCase`
+* 暴露 `ClipboardSuggestionUiState`
+* 处理：
+
+  * show
+  * dismiss
+  * accept
+
+## 16.2 ClipboardSuggestionUiState 至少包含
+
+* `isVisible: Boolean`
+* `suggestion: ClipboardSuggestion?`
+* `errorMessage: String?`
+
+---
+
+## 16.3 行为要求
+
+### accept
+
+* 记录 accepted
+* 关闭建议 UI
+* 导航进入导入/提醒/日历链路
+
+### dismiss
+
+* 记录 dismissed
+* 关闭建议 UI
+
+---
+
+# 17. ClipboardSuggestionRepository 要求
+
+## 17.1 职责
+
+管理建议历史记录。
+
+## 17.2 至少支持：
+
+* `getRecordByHash(hash: String): SuggestionHistoryRecord?`
+* `recordShown(hash: String, now: Long)`
+* `recordDismissed(hash: String, now: Long)`
+* `recordAccepted(hash: String, now: Long)`
+
+## 17.3 存储实现
+
+本轮接受以下任一方案：
+
+### 方案 A：DataStore / SharedPreferences
+
+适合轻量历史记录。
+
+### 方案 B：Room
+
+若 AI 认为更统一也可，但要说明理由。
+
+推荐优先：
+**A：DataStore 或 SharedPreferences**
+因为这是轻量策略数据，不一定需要进 Room。
+
+---
+
+# 18. 导航要求
+
+## 18.1 接受建议后的路径
+
+点击建议后必须能够：
+
+### 方案 A
+
+先进入 `ImportConfirmScreen`
+
+### 方案 B
+
+根据 `suggestedType` 直接进入对应编辑页
+
+推荐优先：
+**A**
+因为和既有导入流程最统一。
+
+---
+
+## 18.2 参数传递要求
+
+复制文本进入导入链路时，必须构建：
+
+* `ImportRequest.text = clipboard text`
+* `sourceContext.sourceType = CLIPBOARD`
+
+并沿用现有 Import 流程设计，不要新造一套平行体系。
+
+---
+
+# 19. Manifest 要求
+
+本轮通常**不强制新增危险权限**。
+
+但 AI 必须说明：
+
+* 剪贴板能力在不同 Android 版本与前后台状态下存在行为差异
+* 本轮方案默认以**应用可合理感知的场景**为主
+* 不应伪装成系统级全局常驻无条件监听器
+
+如果新增任何组件，必须正确处理 `exported` 规则。
+
+---
+
+# 20. Gradle 要求
+
+本轮通常无需重型新依赖。
+如需新增：
+
+* DataStore
+* lifecycle runtime helpers
+
+可以加入，但必须说明原因。
+
+原则：
+
+* 用最小依赖完成功能
+* 避免引入复杂事件总线框架
+
+---
+
+# 21. 如何测试
+
+AI 必须提供明确手工测试步骤，至少包括：
+
+## 21.1 测试 1：高价值文本触发建议
+
+复制文本：
+
+`明天下午5点去北区取韵达快递，取件码6327`
+
+预期：
+
+* 出现建议卡片
+* 建议标题类似“取快递”
+* 类型偏向提醒
+* 可点击进入导入确认页
+
+---
+
+## 21.2 测试 2：事件文本触发建议
+
+复制文本：
+
+`周三下午3点在工大北区开组会`
+
+预期：
+
+* 出现建议卡片
+* 类型偏向日历 / 事件
+* 点击后进入导入确认页或日历编辑页
+
+---
+
+## 21.3 测试 3：低价值文本不触发
+
+复制文本：
+
+`好的`
+或
+`123456`
+
+预期：
+
+* 不出现建议
+
+---
+
+## 21.4 测试 4：同文本去重
+
+连续多次复制同一文本：
+
+`下周一前提交实验报告`
+
+预期：
+
+* 第一次可能触发
+* 短时间内不应连续重复触发
+
+---
+
+## 21.5 测试 5：dismiss 冷却
+
+1. 复制一段高价值文本
+2. 建议出现
+3. 点击关闭
+4. 再次复制同样内容
+
+预期：
+
+* 在 dismiss 冷却期内不应立刻再次出现
+
+---
+
+## 21.6 测试 6：设置页开关
+
+1. 关闭剪贴板建议
+2. 再复制高价值文本
+
+预期：
+
+* 不再出现建议
+
+---
+
+# 22. 当前阶段限制说明
+
+AI 必须主动说明以下限制：
+
+1. 剪贴板监听行为受 Android 版本与系统策略影响
+2. 本轮仅做轻量规则建议，不保证对所有文本判断准确
+3. 本轮不做系统级悬浮窗，因此跨 app 触达体验有限
+4. 当前不支持复杂用户偏好学习
+5. 对极长文本、结构化富文本、图片内容不处理
+6. 本轮不替代辅助功能增强方案
+7. 是否能在所有 ROM 下稳定感知复制行为，存在系统差异
+
+---
+
+# 23. 下一步建议
+
+Milestone 5 完成后，你有两个方向可以选：
+
+## 方向 A：Milestone 6 做辅助功能增强入口 PoC
+
+目标：
+
+* 识别微信/短信等长按候选场景
+* 显示轻量快捷入口
+* 尝试接近“长按后可快速加入提醒”的体验
+
+## 方向 B：先做产品完善
+
+目标：
+
+* 提醒编辑体验优化
+* 时间选择器完善
+* 日历编辑体验优化
+* 列表筛选、分类、搜索
+* 导入历史与建议记录可视化
+
+如果按你原始设想推进，推荐下一轮优先做：
+
+**Milestone 6：辅助功能增强入口 PoC**
+
+---
+
+# 24. 可直接投喂 AI 的执行 Prompt
+
+下面这段可以直接复制给 AI：
+
+```text id="7r9z9b"
+You are implementing Milestone 5 for an Android app called Global Reminder Assistant.
+
+Goal:
+Implement clipboard suggestion flow with deduplication, cooldown strategy, and settings controls.
+
+Tech stack requirements:
+- Kotlin
+- Jetpack Compose
+- MVVM
+- Hilt
+- Room
+- Navigation Compose
+- Coroutines
+- Material 3
+
+Milestone 4 already exists with:
+- app skeleton
+- import flow
+- parser
+- reminder creation and scheduling
+- notification flow
+- calendar editor and system calendar insert intent
+- settings screen basic structure
+
+What must be built in this milestone:
+1. Add clipboard monitoring module
+2. Detect when copied text is worth suggesting
+3. Show lightweight clipboard suggestion UI
+4. Support suggestion actions:
+   - continue as reminder
+   - continue as calendar
+   - dismiss
+5. Add deduplication strategy for same text
+6. Add cooldown strategy
+7. Add settings:
+   - clipboard suggestions enabled
+   - suggestion cooldown minutes
+   - high confidence only
+8. Clicking suggestion must enter existing import flow
+9. SourceType must support CLIPBOARD
+10. Suggestion history must be stored persistently
+
+Recommended architecture:
+- ClipboardMonitor for clip changes
+- DetectClipboardSuggestionUseCase for decision
+- ClipboardSuggestionRepository for history
+- ClipboardSuggestionViewModel for UI orchestration
+- Reuse existing import flow with SourceType.CLIPBOARD
+
+Constraints:
+- Do NOT implement accessibility yet
+- Do NOT implement floating window permission solution yet
+- Do NOT implement OCR
+- Do NOT spam the user
+- Keep the feature conservative and lightweight
+- Keep monitoring logic outside UI
+- Keep code runnable and internally consistent
+
+Output format:
+1. Task understanding
+2. Design explanation
+3. Updated file tree
+4. Full code
+5. Gradle updates
+6. Manifest updates
+7. Manual test instructions
+8. Current limitations
+9. Recommended next step
+```
+
+---
+
+# 25. 更强约束版 Prompt
+
+```text id="ns1yfk"
+Implement Milestone 5 only.
+
+Do not skip files.
+Do not use pseudo-code.
+Do not implement accessibility features yet.
+Do not turn clipboard suggestions into spam.
+Do not keep history only in memory.
+Do not break the existing import flow.
+Do not add unnecessary heavy dependencies.
+
+Use package name: com.example.reminderassistant
+
+The code must be runnable and internally consistent.
+
+The implementation must support:
+clipboard text -> detect suggestion -> show lightweight suggestion -> accept/dismiss -> dedupe/cooldown
+
+If platform limitations exist, state them clearly.
+```
+
+---
+
+# 26. 你验收 AI 产出时重点检查什么
+
+## 26.1 建议是不是“真的有策略”
+
+不是“复制任何文本都弹”，而是：
+
+* 明显低价值文本不过滤
+* 同文本不会反复弹
+* dismiss 后会冷却
+
+## 26.2 历史是不是“真持久化”
+
+* 杀掉 app 再打开
+* 同样内容的去重 / 冷却是否仍有效
+
+## 26.3 设置是不是“真生效”
+
+* 关闭开关后是否完全不建议
+* 修改冷却时间后是否影响行为
+
+## 26.4 导入链路是不是复用原有结构
+
+* 是否沿用 `ImportRequest`
+* 是否正确标记 `SourceType.CLIPBOARD`
+* 是否没新造一套混乱流程
+
+## 26.5 UI 是否轻量
+
+* 是否不是侵入式大弹窗
+* 是否能快速关闭
+* 是否不会频繁打断用户
+
+---
+
+# 27. 这轮完成后的理想结果
+
+Milestone 5 完成后，你应该得到一个：
+
+* 能感知复制文本
+* 能判断是否值得建议
+* 能控制打扰频率
+* 能快速进入提醒/日历流程
+
+的轻量全局入口雏形。
+
+这一步非常重要，因为它已经开始接近你最初想要的体验：
+**用户在别的 app 里处理信息时，不需要再手动打开提醒助手找入口。**

@@ -1,0 +1,33 @@
+# Gradle
+.gradle/
+build/
+
+# Android
+*.apk
+*.ap_
+*.dex
+*.class
+*.jar
+bin/
+gen/
+local.properties
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
