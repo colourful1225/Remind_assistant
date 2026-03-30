@@ -29,9 +29,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.reminderassistant.R
 import com.example.reminderassistant.domain.model.ReminderItem
+import com.example.reminderassistant.domain.model.ReminderStatus
+import com.example.reminderassistant.util.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -119,7 +122,11 @@ fun HomeScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(uiState.reminders) { reminder ->
-                        ReminderItemCard(reminder = reminder)
+                        ReminderItemCard(
+                            reminder = reminder,
+                            onComplete = { viewModel.markComplete(reminder) },
+                            onDelete = { viewModel.deleteReminder(reminder) }
+                        )
                     }
                 }
             }
@@ -128,7 +135,11 @@ fun HomeScreen(
 }
 
 @Composable
-private fun ReminderItemCard(reminder: ReminderItem) {
+private fun ReminderItemCard(
+    reminder: ReminderItem,
+    onComplete: () -> Unit,
+    onDelete: () -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth(),
@@ -150,17 +161,52 @@ private fun ReminderItemCard(reminder: ReminderItem) {
                     text = reminder.note,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp)
+                    modifier = Modifier.padding(top = 4.dp),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
             if (reminder.reminderTime != null) {
                 Text(
-                    text = "Reminder: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date(reminder.reminderTime))}",
+                    text = "Reminder: ${DateTimeFormatter.format(reminder.reminderTime)}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(top = 8.dp)
                 )
             }
+            Text(
+                text = "Status: ${statusLabel(reminder.status)}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 6.dp)
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp),
+                horizontalArrangement = Arrangement.End
+            ) {
+                if (reminder.status == ReminderStatus.ACTIVE) {
+                    Button(
+                        onClick = onComplete,
+                        modifier = Modifier.padding(end = 8.dp)
+                    ) {
+                        Text(stringResource(R.string.mark_complete))
+                    }
+                }
+                Button(onClick = onDelete) {
+                    Text(stringResource(R.string.delete_reminder))
+                }
+            }
         }
+    }
+}
+
+@Composable
+private fun statusLabel(status: ReminderStatus): String {
+    return when (status) {
+        ReminderStatus.ACTIVE -> stringResource(R.string.status_active)
+        ReminderStatus.COMPLETED -> stringResource(R.string.status_completed)
+        ReminderStatus.CANCELLED -> stringResource(R.string.status_cancelled)
     }
 }

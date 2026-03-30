@@ -29,9 +29,17 @@
     <string name="title">Title</string>
     <string name="note">Note</string>
     <string name="reminder_time">Reminder Time</string>
+    <string name="reminder_time_unset">Tap to set reminder time</string>
+    <string name="reminder_time_hint">Select date and time for notification</string>
     <string name="event_title">Event Title</string>
     <string name="event_start_time">Start Time</string>
     <string name="event_end_time">End Time</string>
     <string name="event_location">Location</string>
     <string name="event_description">Description</string>
+    <string name="status_active">ACTIVE</string>
+    <string name="status_completed">COMPLETED</string>
+    <string name="status_cancelled">CANCELLED</string>
+    <string name="mark_complete">Mark Complete</string>
+    <string name="delete_reminder">Delete</string>
+    <string name="notification_default_note">Tap to open reminders</string>
 </resources>

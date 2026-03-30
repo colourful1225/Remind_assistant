@@ -31,4 +31,9 @@ interface ReminderRepository {
      * Get a specific reminder by ID
      */
     fun getReminderById(id: Long): Flow<ReminderItem?>
+
+    /**
+     * Get active reminders after a specific time
+     */
+    suspend fun getActiveRemindersAfter(now: Long): List<ReminderItem>
 }

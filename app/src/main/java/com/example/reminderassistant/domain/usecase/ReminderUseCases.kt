@@ -2,6 +2,7 @@ package com.example.reminderassistant.domain.usecase
 
 import com.example.reminderassistant.domain.model.ReminderItem
 import com.example.reminderassistant.domain.repository.ReminderRepository
+import com.example.reminderassistant.system.notification.ReminderScheduler
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
@@ -42,9 +43,11 @@ class UpdateReminderUseCase @Inject constructor(
  * UseCase to delete a reminder
  */
 class DeleteReminderUseCase @Inject constructor(
-    private val reminderRepository: ReminderRepository
+    private val reminderRepository: ReminderRepository,
+    private val reminderScheduler: ReminderScheduler
 ) {
     suspend operator fun invoke(item: ReminderItem) {
         reminderRepository.deleteReminder(item)
+        reminderScheduler.cancel(item.id)
     }
 }

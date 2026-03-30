@@ -3,7 +3,9 @@ package com.example.reminderassistant.ui.reminder
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.reminderassistant.domain.model.ReminderItem
+import com.example.reminderassistant.domain.model.ReminderStatus
 import com.example.reminderassistant.domain.usecase.CreateReminderUseCase
+import com.example.reminderassistant.domain.usecase.ScheduleReminderUseCase
 import com.example.reminderassistant.system.share.ImportSessionStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,6 +17,7 @@ import javax.inject.Inject
 @HiltViewModel
 class ReminderEditorViewModel @Inject constructor(
     private val createReminderUseCase: CreateReminderUseCase,
+    private val scheduleReminderUseCase: ScheduleReminderUseCase,
     private val importSessionStore: ImportSessionStore
 ) : ViewModel() {
 
@@ -26,7 +29,8 @@ class ReminderEditorViewModel @Inject constructor(
         if (session != null && _uiState.value.title.isBlank()) {
             _uiState.value = _uiState.value.copy(
                 title = session.parseResult.suggestedTitle,
-                note = session.parseResult.rawText
+                note = session.parseResult.rawText,
+                reminderTime = session.parseResult.detectedTimeMillis
             )
         }
     }
@@ -39,15 +43,22 @@ class ReminderEditorViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(note = note)
     }
 
+    fun updateReminderTime(timeMillis: Long) {
+        _uiState.value = _uiState.value.copy(reminderTime = timeMillis)
+    }
+
     fun saveReminder(onComplete: () -> Unit) {
         viewModelScope.launch {
             val currentState = _uiState.value
             if (currentState.title.isNotEmpty()) {
                 val reminderItem = ReminderItem(
                     title = currentState.title,
-                    note = currentState.note
+                    note = currentState.note,
+                    reminderTime = currentState.reminderTime,
+                    status = ReminderStatus.ACTIVE
                 )
-                createReminderUseCase(reminderItem)
+                val id = createReminderUseCase(reminderItem)
+                scheduleReminderUseCase(reminderItem.copy(id = id))
                 importSessionStore.clear()
                 onComplete()
             }

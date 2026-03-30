@@ -75,20 +75,16 @@ fun ReminderEditorScreen(
                     .padding(bottom = 16.dp)
             )
 
-            Text(
-                text = "Reminder Time: (To be implemented)",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 32.dp)
+            ReminderTimePickerField(
+                reminderTime = uiState.reminderTime,
+                onTimeSelected = { viewModel.updateReminderTime(it) }
             )
 
             Button(
                 onClick = { viewModel.saveReminder(onBack) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 8.dp)
+                    .padding(top = 24.dp, bottom = 8.dp)
             ) {
                 Text(stringResource(R.string.save))
             }

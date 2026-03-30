@@ -3,6 +3,7 @@ package com.example.reminderassistant.data.repository
 import com.example.reminderassistant.data.local.ReminderDao
 import com.example.reminderassistant.data.mapper.ReminderMapper
 import com.example.reminderassistant.domain.model.ReminderItem
+import com.example.reminderassistant.domain.model.ReminderStatus
 import com.example.reminderassistant.domain.repository.ReminderRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -41,5 +42,12 @@ class ReminderRepositoryImpl @Inject constructor(
         return reminderDao.getReminderById(id).map { entity ->
             entity?.let { reminderMapper.entityToDomain(it) }
         }
+    }
+
+    override suspend fun getActiveRemindersAfter(now: Long): List<ReminderItem> {
+        return reminderDao.getActiveRemindersAfter(
+            now = now,
+            status = ReminderStatus.ACTIVE.name
+        ).map { reminderMapper.entityToDomain(it) }
     }
 }

@@ -2,6 +2,8 @@ package com.example.reminderassistant.di
 
 import com.example.reminderassistant.data.repository.ReminderRepositoryImpl
 import com.example.reminderassistant.domain.repository.ReminderRepository
+import com.example.reminderassistant.system.notification.ReminderScheduler
+import com.example.reminderassistant.system.notification.ReminderSchedulerImpl
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -20,4 +22,10 @@ abstract class AppModule {
     abstract fun bindReminderRepository(
         impl: ReminderRepositoryImpl
     ): ReminderRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindReminderScheduler(
+        impl: ReminderSchedulerImpl
+    ): ReminderScheduler
 }

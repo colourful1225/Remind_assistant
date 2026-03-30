@@ -25,6 +25,12 @@ interface ReminderDao {
     fun getReminderById(id: Long): Flow<ReminderEntity?>
 
     /**
+     * Get active reminders after a given time
+     */
+    @Query("SELECT * FROM reminders WHERE reminder_time IS NOT NULL AND reminder_time > :now AND status = :status")
+    suspend fun getActiveRemindersAfter(now: Long, status: String): List<ReminderEntity>
+
+    /**
      * Insert a new reminder
      */
     @Insert
