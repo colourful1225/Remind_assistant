@@ -19,12 +19,17 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.reminderassistant.R
+import android.content.Intent
+import android.provider.Settings
+import com.example.reminderassistant.ui.accessibility.AccessibilityEducationScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,6 +38,11 @@ fun SettingsScreen(
     viewModel: SettingsViewModel
 ) {
     val uiState = viewModel.uiState.collectAsState().value
+    val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        viewModel.refreshAccessibilityStatus()
+    }
 
     Scaffold(
         topBar = {
@@ -112,8 +122,32 @@ fun SettingsScreen(
             SettingSwitchItem(
                 label = stringResource(R.string.settings_accessibility),
                 isChecked = uiState.accessibilityServiceEnabled,
-                onCheckedChange = { viewModel.toggleAccessibilityService() }
+                onCheckedChange = { viewModel.refreshAccessibilityStatus() }
             )
+
+            AccessibilityEducationScreen()
+
+            Text(
+                text = if (uiState.accessibilityServiceEnabled) {
+                    stringResource(R.string.settings_accessibility_enabled)
+                } else {
+                    stringResource(R.string.settings_accessibility_disabled)
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            Button(
+                onClick = {
+                    context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    })
+                },
+                modifier = Modifier.padding(bottom = 16.dp)
+            ) {
+                Text(stringResource(R.string.settings_accessibility_open))
+            }
 
             SettingSwitchItem(
                 label = stringResource(R.string.settings_show_source),

@@ -29,6 +29,9 @@
     <string name="settings_cooldown_title">Suggestion Cooldown</string>
     <string name="settings_cooldown_minutes">%1$d min</string>
     <string name="settings_accessibility">Enable Accessibility Service</string>
+    <string name="settings_accessibility_enabled">Accessibility service is enabled</string>
+    <string name="settings_accessibility_disabled">Accessibility service is disabled</string>
+    <string name="settings_accessibility_open">Open Accessibility Settings</string>
     <string name="settings_show_source">Show Source App</string>
     <string name="settings_footer">More settings to be added in future versions</string>
     <string name="save">Save</string>
@@ -55,6 +58,13 @@
     <string name="clipboard_suggestion_reminder">Add Reminder</string>
     <string name="clipboard_suggestion_calendar">Add Calendar</string>
     <string name="clipboard_suggestion_dismiss">Dismiss</string>
+    <string name="accessibility_quick_action_title">Accessibility Quick Actions</string>
+    <string name="accessibility_add_reminder">Add Reminder</string>
+    <string name="accessibility_add_calendar">Add Calendar</string>
+    <string name="accessibility_dismiss">Dismiss</string>
+    <string name="accessibility_education_title">Accessibility Quick Actions</string>
+    <string name="accessibility_education_body">Enable accessibility service to show quick actions when long-pressing messages in supported apps.</string>
+    <string name="accessibility_service_description">Show quick actions for reminders and calendar when long-pressing messages in supported apps.</string>
     <string name="status_active">ACTIVE</string>
     <string name="status_completed">COMPLETED</string>
     <string name="status_cancelled">CANCELLED</string>
