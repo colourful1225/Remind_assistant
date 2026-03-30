@@ -23,12 +23,16 @@ fun AppNavGraph(
     importSessionStore: ImportSessionStore
 ) {
     val importSession = importSessionStore.session.collectAsState().value
+    val preferredRoute = importSessionStore.preferredRoute.collectAsState().value
 
     LaunchedEffect(importSession) {
         val currentRoute = navController.currentBackStackEntry?.destination?.route
-        if (importSession != null && currentRoute != Routes.IMPORT_CONFIRM) {
-            navController.navigate(Routes.IMPORT_CONFIRM) {
-                launchSingleTop = true
+        if (importSession != null) {
+            val target = preferredRoute ?: Routes.IMPORT_CONFIRM
+            if (currentRoute != target) {
+                navController.navigate(target) {
+                    launchSingleTop = true
+                }
             }
         }
     }

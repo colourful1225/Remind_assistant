@@ -7,11 +7,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -57,31 +59,70 @@ fun SettingsScreen(
                 .padding(16.dp)
         ) {
             Text(
-                text = "Settings",
+                text = stringResource(R.string.settings_header),
                 style = MaterialTheme.typography.headlineSmall,
                 modifier = Modifier.padding(bottom = 24.dp)
             )
 
             SettingSwitchItem(
-                label = "Enable Clipboard Suggestions",
+                label = stringResource(R.string.settings_clipboard_suggestion),
                 isChecked = uiState.clipboardSuggestionsEnabled,
                 onCheckedChange = { viewModel.toggleClipboardSuggestions() }
             )
 
             SettingSwitchItem(
-                label = "Enable Accessibility Service",
+                label = stringResource(R.string.settings_high_confidence),
+                isChecked = uiState.highConfidenceOnly,
+                onCheckedChange = { viewModel.toggleHighConfidenceOnly() }
+            )
+
+            Text(
+                text = stringResource(R.string.settings_cooldown_title),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(top = 8.dp, bottom = 8.dp)
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val options = listOf(2, 5, 10, 30)
+                options.forEach { minutes ->
+                    val selected = uiState.clipboardCooldownMinutes == minutes
+                    if (selected) {
+                        Button(
+                            onClick = { viewModel.setCooldownMinutes(minutes) },
+                            modifier = Modifier.padding(end = 8.dp)
+                        ) {
+                            Text(stringResource(R.string.settings_cooldown_minutes, minutes))
+                        }
+                    } else {
+                        OutlinedButton(
+                            onClick = { viewModel.setCooldownMinutes(minutes) },
+                            modifier = Modifier.padding(end = 8.dp)
+                        ) {
+                            Text(stringResource(R.string.settings_cooldown_minutes, minutes))
+                        }
+                    }
+                }
+            }
+
+            SettingSwitchItem(
+                label = stringResource(R.string.settings_accessibility),
                 isChecked = uiState.accessibilityServiceEnabled,
                 onCheckedChange = { viewModel.toggleAccessibilityService() }
             )
 
             SettingSwitchItem(
-                label = "Show Source App",
+                label = stringResource(R.string.settings_show_source),
                 isChecked = uiState.showSourceApp,
                 onCheckedChange = { viewModel.toggleShowSourceApp() }
             )
 
             Text(
-                text = "More settings to be added in future versions",
+                text = stringResource(R.string.settings_footer),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 32.dp)

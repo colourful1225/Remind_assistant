@@ -23,6 +23,14 @@
     <string name="reminder_editor_title">Edit Reminder</string>
     <string name="calendar_editor_title">Edit Calendar Event</string>
     <string name="settings_title">Settings</string>
+    <string name="settings_header">Settings</string>
+    <string name="settings_clipboard_suggestion">Enable Clipboard Suggestions</string>
+    <string name="settings_high_confidence">Only Suggest High Confidence</string>
+    <string name="settings_cooldown_title">Suggestion Cooldown</string>
+    <string name="settings_cooldown_minutes">%1$d min</string>
+    <string name="settings_accessibility">Enable Accessibility Service</string>
+    <string name="settings_show_source">Show Source App</string>
+    <string name="settings_footer">More settings to be added in future versions</string>
     <string name="save">Save</string>
     <string name="cancel">Cancel</string>
     <string name="delete">Delete</string>
@@ -42,6 +50,11 @@
     <string name="calendar_add_to_system">Add to System Calendar</string>
     <string name="calendar_no_app">No calendar app found. You can return to reminder mode.</string>
     <string name="calendar_fallback_reminder">Switch to Reminder</string>
+    <string name="clipboard_suggestion_title">Clipboard Suggestion</string>
+    <string name="clipboard_suggestion_type">Suggested: %1$s</string>
+    <string name="clipboard_suggestion_reminder">Add Reminder</string>
+    <string name="clipboard_suggestion_calendar">Add Calendar</string>
+    <string name="clipboard_suggestion_dismiss">Dismiss</string>
     <string name="status_active">ACTIVE</string>
     <string name="status_completed">COMPLETED</string>
     <string name="status_cancelled">CANCELLED</string>
