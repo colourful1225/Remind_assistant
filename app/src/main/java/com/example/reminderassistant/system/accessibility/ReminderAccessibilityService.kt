@@ -6,7 +6,6 @@ import android.content.Intent
 import android.provider.CalendarContract
 import android.view.accessibility.AccessibilityEvent
 import com.example.reminderassistant.parser.TimeParser
-import com.example.reminderassistant.system.accessibility.model.TextExtractor
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -14,12 +13,12 @@ import javax.inject.Inject
 class ReminderAccessibilityService : AccessibilityService() {
 
     @Inject lateinit var timeParser: TimeParser
-    private lateinit var textExtractor: TextExtractor
+    private lateinit var textExtractor: AccessibilityNodeTextExtractor
     private var overlayController: AccessibilityOverlayController? = null
 
     override fun onServiceConnected() {
         super.onServiceConnected()
-        textExtractor = TextExtractor()
+        textExtractor = AccessibilityNodeTextExtractor()
         overlayController = AccessibilityOverlayController(this)
         serviceInfo = serviceInfo.apply {
             eventTypes = AccessibilityEvent.TYPE_VIEW_LONG_CLICKED
