@@ -2,49 +2,64 @@ package com.example.reminderassistant.system.accessibility
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
+import android.content.Intent
+import android.provider.CalendarContract
 import android.view.accessibility.AccessibilityEvent
-import com.example.reminderassistant.domain.model.AccessibilitySuggestion
-import com.example.reminderassistant.navigation.Routes
+import com.example.reminderassistant.parser.TimeParser
+import com.example.reminderassistant.system.accessibility.model.TextExtractor
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
 @AndroidEntryPoint
 class ReminderAccessibilityService : AccessibilityService() {
 
-    @Inject lateinit var eventRouter: AccessibilityEventRouter
-    @Inject lateinit var importBridge: AccessibilityImportBridge
-
+    @Inject lateinit var timeParser: TimeParser
+    private lateinit var textExtractor: TextExtractor
     private var overlayController: AccessibilityOverlayController? = null
 
     override fun onServiceConnected() {
         super.onServiceConnected()
+        textExtractor = TextExtractor()
         overlayController = AccessibilityOverlayController(this)
         serviceInfo = serviceInfo.apply {
-            eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or
-                AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED or
-                AccessibilityEvent.TYPE_VIEW_LONG_CLICKED or
-                AccessibilityEvent.TYPE_VIEW_SELECTED
+            eventTypes = AccessibilityEvent.TYPE_VIEW_LONG_CLICKED
             feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
-            flags = AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS or
-                AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+            flags = AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
         }
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
-        val suggestion: AccessibilitySuggestion = eventRouter.onEvent(event, rootInActiveWindow) ?: return
-        val snippet = suggestion.rawText.take(80)
-
+        if (event.eventType != AccessibilityEvent.TYPE_VIEW_LONG_CLICKED) return
+        
+        val rawText = textExtractor.extract(event, rootInActiveWindow)?.trim() ?: return
+        if (rawText.isBlank()) return
+        
+        val timeResult = timeParser.parse(rawText)
         overlayController?.show(
-            title = getString(com.example.reminderassistant.R.string.accessibility_quick_action_title),
-            snippet = snippet,
-            onReminder = {
-                importBridge.launchImport(suggestion, Routes.REMINDER_EDITOR)
-            },
-            onCalendar = {
-                importBridge.launchImport(suggestion, Routes.CALENDAR_EDITOR)
-            },
-            onDismiss = { /* no-op */ }
+            rawText = rawText,
+            onCalendar = { launchCalendarIntent(rawText, timeResult.timeMillis) },
+            onNotes = { launchNotesIntent(rawText, timeResult.timeMillis) }
         )
+    }
+
+    private fun launchCalendarIntent(text: String, timeMillis: Long?) {
+        val intent = Intent(Intent.ACTION_INSERT).apply {
+            data = CalendarContract.Events.CONTENT_URI
+            putExtra(CalendarContract.Events.TITLE, text)
+            if (timeMillis != null) {
+                putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, timeMillis)
+            }
+        }
+        startActivity(intent)
+    }
+
+    private fun launchNotesIntent(text: String, timeMillis: Long?) {
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, text)
+            putExtra(Intent.EXTRA_TEXT, text)
+        }
+        startActivity(intent)
     }
 
     override fun onInterrupt() {

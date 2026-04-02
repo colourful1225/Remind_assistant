@@ -2,15 +2,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE" />
 
     <application
         android:name=".ReminderAssistantApp"
-        android:allowBackup="true"
-        android:dataExtractionRules="@xml/data_extraction_rules"
-        android:fullBackupContent="@xml/backup_rules"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -27,44 +23,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <activity
-            android:name=".system.share.ShareReceiverActivity"
-            android:exported="true"
-            android:theme="@style/Theme.ReminderAssistant">
-            <intent-filter>
-                <action android:name="android.intent.action.SEND" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="text/plain" />
-            </intent-filter>
-        </activity>
-
-        <activity
-            android:name=".system.share.ProcessTextActivity"
-            android:exported="true"
-            android:permission="android.permission.PROCESS_TEXT"
-            android:theme="@style/Theme.ReminderAssistant">
-            <intent-filter>
-                <action android:name="android.intent.action.PROCESS_TEXT" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="text/plain" />
-            </intent-filter>
-            <meta-data
-                android:name="android.intent.extra.PROCESS_TEXT_READONLY"
-                android:value="true" />
-        </activity>
-
-        <receiver
-            android:name=".system.notification.ReminderNotificationReceiver"
-            android:exported="false" />
-
-        <receiver
-            android:name=".system.boot.BootCompletedReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-            </intent-filter>
-        </receiver>
 
         <service
             android:name=".system.accessibility.ReminderAccessibilityService"

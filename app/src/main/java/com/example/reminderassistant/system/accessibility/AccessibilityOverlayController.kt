@@ -21,63 +21,55 @@ class AccessibilityOverlayController(
     private val autoDismissRunnable = Runnable { hide() }
 
     fun show(
-        title: String,
-        snippet: String,
-        onReminder: () -> Unit,
+        rawText: String,
         onCalendar: () -> Unit,
-        onDismiss: () -> Unit
+        onNotes: () -> Unit
     ) {
         if (overlayView != null) return
 
         val container = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(32, 24, 32, 24)
+            setPadding(16, 12, 16, 12)
             setBackgroundResource(android.R.drawable.dialog_holo_light_frame)
         }
 
-        val titleView = TextView(context).apply {
-            text = title
-            textSize = 16f
-        }
-        val snippetView = TextView(context).apply {
-            text = snippet
+        val textView = TextView(context).apply {
+            text = rawText.take(80)
             textSize = 14f
-            setPadding(0, 12, 0, 12)
+            setPadding(0, 8, 0, 8)
         }
 
-        val row = LinearLayout(context).apply {
+        val buttonRow = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
         }
 
-        val reminderButton = Button(context).apply {
-            text = context.getString(R.string.accessibility_add_reminder)
-            setOnClickListener {
-                onReminder()
-                hide()
-            }
-        }
         val calendarButton = Button(context).apply {
-            text = context.getString(R.string.accessibility_add_calendar)
+            text = "日历"
             setOnClickListener {
                 onCalendar()
                 hide()
             }
         }
-        val dismissButton = Button(context).apply {
-            text = context.getString(R.string.accessibility_dismiss)
+        val notesButton = Button(context).apply {
+            text = "备忘录"
             setOnClickListener {
-                onDismiss()
+                onNotes()
+                hide()
+            }
+        }
+        val closeButton = Button(context).apply {
+            text = "关闭"
+            setOnClickListener {
                 hide()
             }
         }
 
-        row.addView(reminderButton)
-        row.addView(calendarButton)
-        row.addView(dismissButton)
+        buttonRow.addView(calendarButton)
+        buttonRow.addView(notesButton)
+        buttonRow.addView(closeButton)
 
-        container.addView(titleView)
-        container.addView(snippetView)
-        container.addView(row)
+        container.addView(textView)
+        container.addView(buttonRow)
 
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
