@@ -2,7 +2,6 @@ package com.example.reminderassistant.ui.settings
 
 import androidx.lifecycle.ViewModel
 import com.example.reminderassistant.data.settings.SettingsRepository
-import com.example.reminderassistant.system.accessibility.AccessibilityStatusProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -11,8 +10,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val settingsRepository: SettingsRepository,
-    private val accessibilityStatusProvider: AccessibilityStatusProvider
+    private val settingsRepository: SettingsRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
@@ -20,7 +18,7 @@ class SettingsViewModel @Inject constructor(
             clipboardSuggestionsEnabled = settingsRepository.getClipboardSuggestionsEnabled(),
             clipboardCooldownMinutes = settingsRepository.getCooldownMinutes(),
             highConfidenceOnly = settingsRepository.getHighConfidenceOnly(),
-            accessibilityServiceEnabled = accessibilityStatusProvider.isServiceEnabled()
+            accessibilityServiceEnabled = false
         )
     )
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
@@ -52,8 +50,6 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun refreshAccessibilityStatus() {
-        _uiState.value = _uiState.value.copy(
-            accessibilityServiceEnabled = accessibilityStatusProvider.isServiceEnabled()
-        )
+        // TODO: Implement accessibility status check
     }
 }

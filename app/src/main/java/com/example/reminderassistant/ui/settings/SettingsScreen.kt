@@ -30,7 +30,6 @@ import com.example.reminderassistant.R
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import com.example.reminderassistant.ui.accessibility.AccessibilityEducationScreen
 import com.example.reminderassistant.ui.accessibility.AccessibilityStatusCard
 import android.content.Intent
 import android.provider.Settings
@@ -129,8 +128,6 @@ fun SettingsScreen(
                     }
                 }
             }
-
-            AccessibilityEducationScreen()
 
             AccessibilityStatusCard(
                 enabled = uiState.accessibilityServiceEnabled,
