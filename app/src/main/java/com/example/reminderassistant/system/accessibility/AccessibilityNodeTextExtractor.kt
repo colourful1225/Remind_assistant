@@ -6,10 +6,10 @@ import android.view.accessibility.AccessibilityNodeInfo
 class AccessibilityNodeTextExtractor {
     fun extract(event: AccessibilityEvent, root: AccessibilityNodeInfo?): String? {
         val eventText = event.text?.firstOrNull()?.toString()
-        if (!eventText.isNullOrBlank()) return eventText
+        if (isValidCandidate(eventText)) return eventText
 
         val sourceText = event.source?.text?.toString()
-        if (!sourceText.isNullOrBlank()) return sourceText
+        if (isValidCandidate(sourceText)) return sourceText
 
         if (root == null) return null
         return traverseForText(root)
@@ -24,7 +24,7 @@ class AccessibilityNodeTextExtractor {
             val node = queue.removeFirst()
             scanned++
             val text = node.text?.toString()
-            if (!text.isNullOrBlank() && text.length in MIN_LENGTH..MAX_LENGTH) {
+            if (isValidCandidate(text)) {
                 return text
             }
             for (i in 0 until node.childCount) {
@@ -34,9 +34,14 @@ class AccessibilityNodeTextExtractor {
         return null
     }
 
+    private fun isValidCandidate(text: String?): Boolean {
+        if (text.isNullOrBlank()) return false
+        return text.length in MIN_LENGTH..MAX_LENGTH
+    }
+
     companion object {
-        private const val MIN_LENGTH = 6
-        private const val MAX_LENGTH = 160
+        private const val MIN_LENGTH = 1
+        private const val MAX_LENGTH = 300
         private const val MAX_NODES = 60
     }
 }

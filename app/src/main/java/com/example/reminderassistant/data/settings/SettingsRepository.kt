@@ -1,6 +1,9 @@
 package com.example.reminderassistant.data.settings
 
 interface SettingsRepository {
+    fun getBackgroundMonitorEnabled(): Boolean
+    fun setBackgroundMonitorEnabled(enabled: Boolean)
+
     fun getClipboardSuggestionsEnabled(): Boolean
     fun setClipboardSuggestionsEnabled(enabled: Boolean)
 
