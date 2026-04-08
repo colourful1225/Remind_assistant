@@ -2,6 +2,8 @@ package com.example.reminderassistant.system.intent
 
 import android.content.Context
 import android.content.Intent
+import android.content.ClipData
+import android.content.ClipboardManager
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -33,50 +35,42 @@ class XiaomiIntentCaller(private val context: Context) {
             else -> ""
         }
 
-        val primaryIntent = Intent("com.miui.todo.shortcut.action.INSERT_OR_EDIT").apply {
-            setPackage("com.miui.notes")
-            putExtra("title", title)
-            putExtra("content", todoText)
-            putExtra("text", todoText)
-            putExtra("todo_content", todoText)
-            putExtra("com.miui.todo.intent.extra.CONTENT", todoText)
-            putExtra("com.miui.todo.intent.extra.TEXT", todoText)
-            putExtra(Intent.EXTRA_TEXT, todoText)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
+        copyToClipboard(title, todoText)
 
-        val secondaryIntent = Intent("com.miui.todo.action.INSERT_OR_EDIT").apply {
-            setPackage("com.miui.notes")
-            putExtra("title", title)
-            putExtra("content", todoText)
-            putExtra("text", todoText)
-            putExtra("todo_content", todoText)
-            putExtra("com.miui.todo.intent.extra.CONTENT", todoText)
-            putExtra("com.miui.todo.intent.extra.TEXT", todoText)
-            putExtra(Intent.EXTRA_TEXT, todoText)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-
-        val tertiaryIntent = Intent(Intent.ACTION_SEND).apply {
-            setPackage("com.miui.notes")
-            type = "text/plain"
-            putExtra(Intent.EXTRA_SUBJECT, title)
-            putExtra(Intent.EXTRA_TEXT, todoText)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        try {
+            val intent = Intent(Intent.ACTION_INSERT).apply {
+                setPackage("com.miui.notes")
+                type = "vnd.android.cursor.item/todo"
+                putExtra("title", title)
+                putExtra("content", todoText)
+                putExtra(Intent.EXTRA_TEXT, todoText)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            }
+            context.startActivity(intent)
+            return
+        } catch (_: Exception) {
         }
 
         try {
-            context.startActivity(primaryIntent)
-        } catch (_: Exception) {
-            try {
-                context.startActivity(secondaryIntent)
-            } catch (_: Exception) {
-                try {
-                    context.startActivity(tertiaryIntent)
-                } catch (_: Exception) {
-                    startGenericNotes(title, todoText)
-                }
+            val mainIntent = Intent().apply {
+                setPackage("com.miui.notes")
+                action = Intent.ACTION_MAIN
+                addCategory(Intent.CATEGORY_LAUNCHER)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
+            context.startActivity(mainIntent)
+        } catch (_: Exception) {
+            startGenericNotes(title, todoText)
+        }
+    }
+
+    private fun copyToClipboard(title: String, content: String) {
+        try {
+            val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            val clipText = if (content.isNotBlank()) content else title
+            val clip = ClipData.newPlainText("reminder_todo", clipText)
+            clipboardManager.setPrimaryClip(clip)
+        } catch (_: Exception) {
         }
     }
 

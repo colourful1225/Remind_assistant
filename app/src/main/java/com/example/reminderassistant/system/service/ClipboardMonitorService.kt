@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.Service
 import android.app.AlarmManager
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.PixelFormat
@@ -23,6 +24,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.app.NotificationCompat
 import com.example.reminderassistant.R
+import com.example.reminderassistant.data.settings.SettingsKeys
 import com.example.reminderassistant.data.settings.SettingsRepository
 import com.example.reminderassistant.parser.TimeParser
 import com.example.reminderassistant.system.clipboard.ClipboardMonitor
@@ -41,6 +43,8 @@ class ClipboardMonitorService : Service() {
         const val ACTION_START = "com.example.reminderassistant.action.START_MONITOR"
         const val ACTION_STOP = "com.example.reminderassistant.action.STOP_MONITOR"
         const val ACTION_TEST_TRIGGER = "com.example.reminderassistant.action.TEST_TRIGGER"
+        const val ACTION_REFRESH_NOTIFICATION = "com.example.reminderassistant.action.REFRESH_NOTIFICATION"
+        const val ACTION_TOGGLE_ASSIST = "com.example.reminderassistant.action.TOGGLE_ASSIST"
     }
 
     @Inject
@@ -90,6 +94,9 @@ class ClipboardMonitorService : Service() {
             ACTION_STOP -> {
                 stopSelf()
                 return START_NOT_STICKY
+            }
+            ACTION_REFRESH_NOTIFICATION -> {
+                updateForegroundNotification()
             }
             ACTION_TEST_TRIGGER -> {
                 val copiedText = intent.getStringExtra("copiedText").orEmpty()
@@ -278,12 +285,37 @@ class ClipboardMonitorService : Service() {
     }
 
     private fun createNotification(): Notification {
+        val assistEnabled = isAssistEnabled()
+        val toggleTitle = if (assistEnabled) "关闭" else "开启"
+        val toggleBroadcastIntent = Intent(this, AssistToggleReceiver::class.java).apply {
+            action = ACTION_TOGGLE_ASSIST
+        }
+        val toggleIntent = PendingIntent.getBroadcast(
+            this,
+            2201,
+            toggleBroadcastIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle("提醒助手运行中")
-            .setContentText("正在监听复制内容，检测时间后会弹出底部小弹窗")
+            .setContentText(if (assistEnabled) "状态：已开启（点此可关闭）" else "状态：已关闭（点此可开启）")
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setContentIntent(toggleIntent)
+            .addAction(0, toggleTitle, toggleIntent)
             .build()
+    }
+
+    private fun updateForegroundNotification() {
+        val manager = getSystemService(NotificationManager::class.java)
+        manager.notify(NOTIFICATION_ID, createNotification())
+    }
+
+    private fun isAssistEnabled(): Boolean {
+        val prefs = getSharedPreferences(SettingsKeys.PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getBoolean(SettingsKeys.KEY_A11Y_ASSIST_ENABLED, true)
     }
 }

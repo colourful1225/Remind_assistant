@@ -2,11 +2,14 @@ package com.example.reminderassistant.system.accessibility
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
-import android.view.accessibility.AccessibilityNodeInfo
-import android.util.Log
-import android.view.accessibility.AccessibilityEvent
+import android.content.ClipboardManager
+import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
+import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityNodeInfo
+import com.example.reminderassistant.data.settings.SettingsKeys
 import com.example.reminderassistant.parser.TimeParser
 import com.example.reminderassistant.system.intent.XiaomiIntentCaller
 import dagger.hilt.android.AndroidEntryPoint
@@ -19,36 +22,36 @@ class ReminderAccessibilityService : AccessibilityService() {
 
     @Inject lateinit var timeParser: TimeParser
     private lateinit var textExtractor: AccessibilityNodeTextExtractor
-    private var overlayController: AccessibilityOverlayController? = null
     private lateinit var xiaomiIntentCaller: XiaomiIntentCaller
+    private var overlayController: AccessibilityOverlayController? = null
+
+    private val handler = Handler(Looper.getMainLooper())
     private var lastHandledText: String = ""
     private var lastHandledTs: Long = 0L
-    private var pendingCopiedText: String? = null
-    private var pendingPackage: String? = null
-    private var pendingTs: Long = 0L
-    private val handler = Handler(Looper.getMainLooper())
-    private val clearPendingRunnable = Runnable {
-        clearPending("pending_timeout")
-    }
+    private var showTimestamp: Long = 0L
+
     private val selectionWatchdogRunnable = object : Runnable {
         override fun run() {
             if (overlayController?.isShowing() != true) return
-            val root = rootInActiveWindow
-            val stillSelecting = hasSelectionUi(root)
-            if (!stillSelecting) {
-                overlayController?.hide("selection_lost")
-                clearPending("selection_lost")
+            if (overlayController?.isPanelShowing() == true) return
+            val elapsed = System.currentTimeMillis() - showTimestamp
+            if (elapsed < 1500L) {
+                handler.postDelayed(this, 300L)
                 return
             }
-            handler.postDelayed(this, 350L)
+            if (!hasSelectionUi(rootInActiveWindow)) {
+                overlayController?.hide("selection_lost")
+                return
+            }
+            handler.postDelayed(this, 300L)
         }
     }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
         textExtractor = AccessibilityNodeTextExtractor()
-        overlayController = AccessibilityOverlayController(this)
         xiaomiIntentCaller = XiaomiIntentCaller(this)
+        overlayController = AccessibilityOverlayController(this)
 
         serviceInfo = serviceInfo.apply {
             eventTypes = AccessibilityEvent.TYPE_VIEW_LONG_CLICKED or
@@ -57,108 +60,93 @@ class ReminderAccessibilityService : AccessibilityService() {
                 AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED or
                 AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED
             feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
-            flags = AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
-            notificationTimeout = 120
+            flags = AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS or
+                AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or
+                AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS
+            notificationTimeout = 100
         }
         Log.i(TAG, "accessibility service connected")
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
+        if (!isAssistEnabled()) {
+            if (overlayController?.isShowing() == true) overlayController?.hide("assist_disabled")
+            return
+        }
+
         val pkg = event.packageName?.toString().orEmpty()
         if (pkg.isBlank() || pkg == packageName || isIgnoredPackage(pkg)) return
 
         when (event.eventType) {
             AccessibilityEvent.TYPE_VIEW_LONG_CLICKED -> {
-                val candidate = textExtractor.extract(event, rootInActiveWindow)?.trim().orEmpty()
+                val candidate = (
+                    textExtractor.extract(event, rootInActiveWindow)
+                        ?: readClipboardTextSafely()
+                    )
+                    ?.trim()
+                    .orEmpty()
                 if (candidate.isBlank()) return
-                pendingCopiedText = candidate
-                pendingPackage = pkg
-                pendingTs = System.currentTimeMillis()
-                handler.removeCallbacks(clearPendingRunnable)
-                handler.postDelayed(clearPendingRunnable, 6_000L)
-                startSelectionWatchdog()
-                Log.i(TAG, "pending text cached pkg=$pkg text=$candidate")
-            }
+                if (shouldIgnoreDuplicate(candidate)) return
 
-            AccessibilityEvent.TYPE_VIEW_CLICKED -> {
-                if (!isCopyAction(event)) {
-                    if (overlayController?.isShowing() == true) {
-                        overlayController?.hide("non_copy_click")
-                    }
-                    return
-                }
-                val cached = pendingCopiedText ?: return
-                if (System.currentTimeMillis() - pendingTs > 6_000L) return
-                if (pendingPackage != null && pendingPackage != pkg) return
-                if (shouldIgnoreDuplicate(cached)) return
-
-                val timeResult = timeParser.parse(cached)
-                lastHandledText = cached
+                val parse = timeParser.parse(candidate)
+                lastHandledText = candidate
                 lastHandledTs = System.currentTimeMillis()
-                Log.i(TAG, "copy confirmed pkg=$pkg text=$cached conf=${timeResult.confidence}")
+                showTimestamp = System.currentTimeMillis()
 
                 overlayController?.show(
-                    rawText = cached,
-                    parsedTimeMillis = timeResult.timeMillis,
-                    onCalendar = {
+                    rawText = candidate,
+                    parsedTimeMillis = parse.timeMillis,
+                    onCalendar = { millis ->
                         xiaomiIntentCaller.startMiCalendar(
-                            title = cached,
-                            timeMillis = it,
-                            description = cached
+                            title = candidate,
+                            timeMillis = millis,
+                            description = candidate
                         )
                     },
                     onNotes = {
                         xiaomiIntentCaller.startMiNotes(
-                            title = cached,
-                            content = cached
+                            title = candidate,
+                            content = candidate
                         )
                     }
                 )
                 startSelectionWatchdog()
-                clearPending("copy_consumed")
+                Log.i(TAG, "overlay show requested, pkg=$pkg, text=$candidate")
             }
 
-            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
-                if (overlayController?.isShowing() == true && !hasSelectionUi(rootInActiveWindow)) {
-                    overlayController?.hide("window_changed")
-                    clearPending("window_changed")
-                }
-            }
-
+            AccessibilityEvent.TYPE_VIEW_CLICKED,
+            AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED,
             AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED,
             AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED -> {
-                if (overlayController?.isShowing() == true && !hasSelectionUi(rootInActiveWindow)) {
+                if (overlayController?.isShowing() != true) return
+                if (overlayController?.isPanelShowing() == true) return
+                val elapsed = System.currentTimeMillis() - showTimestamp
+                if (elapsed < 1500L) return
+                if (!hasSelectionUi(rootInActiveWindow)) {
                     overlayController?.hide("selection_changed")
-                    clearPending("selection_changed")
                 }
             }
         }
     }
 
     override fun onInterrupt() {
-        Log.w(TAG, "onInterrupt called")
+        Log.w(TAG, "onInterrupt")
     }
 
     override fun onDestroy() {
         overlayController?.hide()
-        handler.removeCallbacks(clearPendingRunnable)
         handler.removeCallbacks(selectionWatchdogRunnable)
         super.onDestroy()
     }
 
     private fun shouldIgnoreDuplicate(text: String): Boolean {
         val now = System.currentTimeMillis()
-        val isDuplicate = text == lastHandledText && (now - lastHandledTs) < 3000L
-        return isDuplicate
+        return text == lastHandledText && (now - lastHandledTs) < 2500L
     }
 
-    private fun isCopyAction(event: AccessibilityEvent): Boolean {
-        val t1 = event.text?.joinToString(" ")?.lowercase().orEmpty()
-        val t2 = event.contentDescription?.toString()?.lowercase().orEmpty()
-        val s = event.source
-        val sourceText = s?.text?.toString()?.lowercase().orEmpty()
-        val merged = "$t1 $t2 $sourceText"
-        return merged.contains("复制") || merged.contains("拷贝") || merged.contains("copy")
+    private fun startSelectionWatchdog() {
+        handler.removeCallbacks(selectionWatchdogRunnable)
+        handler.postDelayed(selectionWatchdogRunnable, 250L)
     }
 
     private fun isIgnoredPackage(pkg: String): Boolean {
@@ -168,36 +156,46 @@ class ReminderAccessibilityService : AccessibilityService() {
             pkg.startsWith("com.sohu.inputmethod")
     }
 
-    private fun clearPending(reason: String) {
-        handler.removeCallbacks(clearPendingRunnable)
-        pendingCopiedText = null
-        pendingPackage = null
-        pendingTs = 0L
-        Log.i(TAG, "pending cleared: $reason")
-    }
-
-    private fun startSelectionWatchdog() {
-        handler.removeCallbacks(selectionWatchdogRunnable)
-        handler.postDelayed(selectionWatchdogRunnable, 250L)
-    }
-
     private fun hasSelectionUi(root: AccessibilityNodeInfo?): Boolean {
         if (root == null) return false
         val queue = ArrayDeque<AccessibilityNodeInfo>()
         queue.add(root)
         var scanned = 0
-        while (queue.isNotEmpty() && scanned < 120) {
+        while (queue.isNotEmpty() && scanned < 180) {
             val node = queue.removeFirst()
             scanned++
-            val text = (node.text?.toString().orEmpty() + " " + node.contentDescription?.toString().orEmpty())
-                .lowercase()
-            if (text.contains("复制") || text.contains("拷贝") || text.contains("copy")) {
+
+            val txt = node.text?.toString().orEmpty().lowercase()
+            val desc = node.contentDescription?.toString().orEmpty().lowercase()
+            val merged = "$txt $desc"
+            if (
+                merged.contains("复制") || merged.contains("拷贝") || merged.contains("copy") ||
+                merged.contains("全选") || merged.contains("选择") || merged.contains("select")
+            ) {
                 return true
             }
+
+            if (node.isFocused && node.isEditable) return true
+            if (node.textSelectionStart >= 0 && node.textSelectionEnd > node.textSelectionStart) return true
+
             for (i in 0 until node.childCount) {
-                node.getChild(i)?.let(queue::add)
+                node.getChild(i)?.let { queue.add(it) }
             }
         }
         return false
+    }
+
+    private fun readClipboardTextSafely(): String? {
+        return runCatching {
+            val manager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            val clip = manager.primaryClip ?: return null
+            if (clip.itemCount <= 0) return null
+            clip.getItemAt(0).coerceToText(this)?.toString()
+        }.getOrNull()
+    }
+
+    private fun isAssistEnabled(): Boolean {
+        val prefs = getSharedPreferences(SettingsKeys.PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getBoolean(SettingsKeys.KEY_A11Y_ASSIST_ENABLED, true)
     }
 }

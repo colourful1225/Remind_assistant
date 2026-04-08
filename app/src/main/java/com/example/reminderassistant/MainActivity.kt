@@ -1,7 +1,9 @@
 package com.example.reminderassistant
 
+import android.Manifest
 import android.content.ComponentName
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -12,6 +14,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.example.reminderassistant.data.settings.SettingsRepository
 import com.example.reminderassistant.system.service.ClipboardMonitorService
@@ -27,8 +30,13 @@ class MainActivity : ComponentActivity() {
 
     private var monitorEnabled by mutableStateOf(false)
 
+    companion object {
+        private const val REQUEST_POST_NOTIFICATIONS = 1001
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        ensureNotificationPermissionIfNeeded()
         monitorEnabled = settingsRepository.getBackgroundMonitorEnabled()
 
         if (monitorEnabled) {
@@ -44,6 +52,8 @@ class MainActivity : ComponentActivity() {
                     if (enabled) {
                         startClipboardService()
                         ensureOverlayPermission()
+                        ensureAccessibilityEnabled()
+                        requestIgnoreBatteryOptimization()
                     } else {
                         stopClipboardService()
                     }
@@ -71,6 +81,16 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun ensureNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) return
+        ActivityCompat.requestPermissions(
+            this,
+            arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+            REQUEST_POST_NOTIFICATIONS
+        )
+    }
+
     private fun startClipboardService() {
         val serviceIntent = Intent(this, ClipboardMonitorService::class.java).apply {
             action = ClipboardMonitorService.ACTION_START
@@ -93,6 +113,20 @@ class MainActivity : ComponentActivity() {
                 Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                 Uri.parse("package:$packageName")
             )
+        )
+    }
+
+    private fun ensureAccessibilityEnabled() {
+        val enabledServices = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+            .orEmpty()
+            .lowercase()
+        val targetService = "$packageName/${packageName}.system.accessibility.ReminderAccessibilityService".lowercase()
+        if (enabledServices.contains(targetService)) return
+
+        startActivity(
+            Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
         )
     }
 

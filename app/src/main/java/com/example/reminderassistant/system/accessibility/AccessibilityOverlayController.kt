@@ -20,14 +20,15 @@ class AccessibilityOverlayController(
 ) {
     companion object {
         private const val TAG = "A11yOverlay"
-        private const val MINI_TIMEOUT_MS = 10_000L
-        private const val PANEL_TIMEOUT_MS = 15_000L
+        private const val MINI_TIMEOUT_MS = 12_000L
+        private const val PANEL_TIMEOUT_MS = 18_000L
     }
 
     private val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+    private val handler = Handler(Looper.getMainLooper())
     private var miniView: View? = null
     private var panelView: View? = null
-    private val handler = Handler(Looper.getMainLooper())
+
     private val miniDismissRunnable = Runnable { hideMini("mini_timeout") }
     private val panelDismissRunnable = Runnable { hidePanel("panel_timeout") }
 
@@ -45,9 +46,9 @@ class AccessibilityOverlayController(
         hideAll(reason)
     }
 
-    fun isShowing(): Boolean {
-        return miniView != null || panelView != null
-    }
+    fun isShowing(): Boolean = miniView != null || panelView != null
+    fun isMiniShowing(): Boolean = miniView != null
+    fun isPanelShowing(): Boolean = panelView != null
 
     private fun showMiniButton(
         rawText: String,
@@ -58,20 +59,20 @@ class AccessibilityOverlayController(
         val root = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(dp(14), dp(8), dp(14), dp(8))
-            background = roundedBg(Color.parseColor("#E6F7F7F7"), 22f, "#B8D0D0D0")
+            background = roundedBg(fill = "#EAF8F8F8", stroke = "#BBD2D2D2", radius = 22f)
             elevation = dp(8).toFloat()
         }
 
-        val title = TextView(context).apply {
+        val button = TextView(context).apply {
             text = "提醒"
-            textSize = 14f
             setTextColor(Color.parseColor("#202124"))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
             setOnClickListener {
                 hideMini("mini_clicked")
                 showChoicePanel(rawText, parsedTimeMillis, onCalendar, onNotes)
             }
         }
-        root.addView(title)
+        root.addView(button)
 
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -86,9 +87,15 @@ class AccessibilityOverlayController(
         }
 
         miniView = root
-        windowManager.addView(root, params)
-        Log.i(TAG, "mini show")
-        handler.postDelayed(miniDismissRunnable, MINI_TIMEOUT_MS)
+        runCatching { windowManager.addView(root, params) }
+            .onSuccess {
+                Log.i(TAG, "mini show")
+                handler.postDelayed(miniDismissRunnable, MINI_TIMEOUT_MS)
+            }
+            .onFailure {
+                miniView = null
+                Log.e(TAG, "mini show failed: ${it.message}")
+            }
     }
 
     private fun showChoicePanel(
@@ -100,7 +107,7 @@ class AccessibilityOverlayController(
         val root = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(20), dp(16), dp(20), dp(16))
-            background = roundedBg(Color.parseColor("#ECFFFFFF"), 26f, "#A8D0D0D0")
+            background = roundedBg(fill = "#ECFFFFFF", stroke = "#A8D0D0D0", radius = 26f)
             elevation = dp(14).toFloat()
         }
 
@@ -115,7 +122,6 @@ class AccessibilityOverlayController(
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
             setPadding(0, dp(8), 0, dp(12))
         }
-
         val row = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -160,9 +166,15 @@ class AccessibilityOverlayController(
         }
 
         panelView = root
-        windowManager.addView(root, params)
-        Log.i(TAG, "panel show")
-        handler.postDelayed(panelDismissRunnable, PANEL_TIMEOUT_MS)
+        runCatching { windowManager.addView(root, params) }
+            .onSuccess {
+                Log.i(TAG, "panel show")
+                handler.postDelayed(panelDismissRunnable, PANEL_TIMEOUT_MS)
+            }
+            .onFailure {
+                panelView = null
+                Log.e(TAG, "panel show failed: ${it.message}")
+            }
     }
 
     private fun hideMini(reason: String) {
@@ -188,12 +200,12 @@ class AccessibilityOverlayController(
         hidePanel(reason)
     }
 
-    private fun roundedBg(fillColor: Int, radiusDp: Float, strokeHex: String): GradientDrawable {
+    private fun roundedBg(fill: String, stroke: String, radius: Float): GradientDrawable {
         return GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            cornerRadius = dp(radiusDp.toInt()).toFloat()
-            setColor(fillColor)
-            setStroke(dp(1), Color.parseColor(strokeHex))
+            cornerRadius = dp(radius.toInt()).toFloat()
+            setColor(Color.parseColor(fill))
+            setStroke(dp(1), Color.parseColor(stroke))
         }
     }
 
